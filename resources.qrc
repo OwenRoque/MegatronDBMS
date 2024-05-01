@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/rec">
+        <file>resources/ico/load-file.ico</file>
+        <file>resources/ico/open-folder.ico</file>
+        <file>resources/ico/run.ico</file>
+        <file>resources/ico/table-file.ico</file>
+        <file>resources/ico/new-table.ico</file>
+        <file>resources/ico/schema-file.ico</file>
+        <file>resources/ico/upload-file.ico</file>
+        <file>resources/ico/success.ico</file>
+        <file>resources/ico/error.ico</file>
+        <file>resources/ico/exit.ico</file>
+        <file>resources/ico/megatron.ico</file>
+        <file>resources/ico/data-query.ico</file>
+    </qresource>
+</RCC>
