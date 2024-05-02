@@ -85,10 +85,9 @@ CMakeLists.txt.user*
 *.dylib
 
 # Local
-
 /build
 /db
-/resources
+
 
 
 
