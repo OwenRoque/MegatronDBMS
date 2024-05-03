@@ -321,6 +321,7 @@ void QueryForm::clear()
 bool QueryForm::exec(const QString &tableName)
 {
     SystemCatalog *sysCat = &SystemCatalog::getInstance();
+    // sysCat->getDiskController()->readBlock();
     QString path(sysCat->getDbDirPath() + "/" + tableName + ".txt");
     QFile tableFile(path);
     tableFile.open(QIODevice::ReadOnly | QIODevice::Text);

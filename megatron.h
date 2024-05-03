@@ -7,8 +7,10 @@
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QMessageBox>
+#include <QSharedPointer>
 
 #include "systemcatalog.h"
+#include "diskcontroller.h"
 
 class QTabWidget;
 class QTreeWidget;
@@ -24,7 +26,7 @@ class Megatron : public QMainWindow
     Q_OBJECT
 
 public:
-    Megatron(QWidget *parent = nullptr);
+    Megatron(QWidget *parent = nullptr, QSharedPointer<DiskController> control = nullptr);
     ~Megatron();
 
 signals:
@@ -46,6 +48,7 @@ private:
     QTabWidget *tabWidget;
     QTreeWidget *tableTreeWidget;
     SystemCatalog *sysCat;
+    QSharedPointer<DiskController> controller;
 
     void createActions();
     void updateActions();

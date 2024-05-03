@@ -87,6 +87,7 @@ CMakeLists.txt.user*
 # Local
 /build
 /db
+/disks
 
 
 

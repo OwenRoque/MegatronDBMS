@@ -1,7 +1,7 @@
 #include "systemcatalog.h"
 
-SystemCatalog::SystemCatalog(const QString &path)
-    : dbDir(path)
+SystemCatalog::SystemCatalog(const QString &path, QSharedPointer<DiskController> control)
+    : dbDir(path), controller(control)
 {
     schemaPath = dbDir.filePath("schema.txt");
 }
@@ -171,6 +171,11 @@ QString SystemCatalog::getSchemaPath() const
 QString SystemCatalog::getDbDirPath() const
 {
     return dbDir.absolutePath();
+}
+
+QSharedPointer<DiskController> SystemCatalog::getDiskController() const
+{
+    return controller;
 }
 
 QList<SystemCatalog::attrMeta> SystemCatalog::values(const QString &str)
