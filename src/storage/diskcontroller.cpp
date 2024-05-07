@@ -3,11 +3,9 @@
 #include <QTextStream>
 #include <QMessageBox>
 
-DiskController::DiskController(QSharedPointer<Disk> d) : disk(d) {
-    // qDebug() << disk->fullDiskSize();
-}
+DiskController::DiskController(QSharedPointer<Disk> d) : disk(d) {}
 
-void DiskController::displaySpace(QWidget *parent, Space& s) const
+void DiskController::displaySpace(QWidget *parent, const Space& s) const
 {
     QString msg = "Used Size: " + QString::number(s.usedSpaceSize) + "b / " + QString::number(s.usedSpaceSize / 1e+6) + "MB\n" +
                   "Used Disk Size: " + QString::number(s.usedDiskSpace) + "b / " + QString::number(s.usedDiskSpace / 1e+6) + "MB\n" +
@@ -25,19 +23,6 @@ DiskController::Space DiskController::getSpaceOf()
 }
 
 DiskController::Space DiskController::getSpaceOf(int nPlatter, int nSurface, int nTrack, int nSector)
-{
-    Space s;
-    return s;
-}
-
-DiskController::Space DiskController::getSpaceOf(char object, int n)
-{
-    Space s;
-    return s;
-}
-
-
-DiskController::Space DiskController::getSpaceOf(int nPlatter, int nSurface)
 {
     Space s;
     return s;

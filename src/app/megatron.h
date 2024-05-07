@@ -9,8 +9,8 @@
 #include <QMessageBox>
 #include <QSharedPointer>
 
-#include "systemcatalog.h"
-#include "diskcontroller.h"
+#include <systemcatalog.h>
+#include <diskcontroller.h>
 
 class QTabWidget;
 class QTreeWidget;

@@ -1,0 +1,11 @@
+qt_add_library(storage STATIC
+    disk.h disk.cpp
+    diskcontroller.h diskcontroller.cpp
+)
+
+target_link_libraries(storage PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Widgets
+)
+
+target_include_directories(storage INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} ${Qt6Widgets_INCLUDE_DIRS})

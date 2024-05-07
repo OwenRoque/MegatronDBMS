@@ -35,8 +35,8 @@
    <string>Megatron</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources.qrc">
-    <normaloff>:/rec/resources/ico/megatron.ico</normaloff>:/rec/resources/ico/megatron.ico</iconset>
+   <iconset resource="../../resources/resources.qrc">
+    <normaloff>:/rec/ico/megatron.ico</normaloff>:/rec/ico/megatron.ico</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -205,8 +205,8 @@
   </widget>
   <action name="actionNewTable">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/rec/resources/ico/new-table.ico</normaloff>:/rec/resources/ico/new-table.ico</iconset>
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/new-table.ico</normaloff>:/rec/ico/new-table.ico</iconset>
    </property>
    <property name="text">
     <string>New Table</string>
@@ -222,8 +222,8 @@
   </action>
   <action name="actionOpenTable">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/rec/resources/ico/table-file.ico</normaloff>:/rec/resources/ico/table-file.ico</iconset>
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/table-file.ico</normaloff>:/rec/ico/table-file.ico</iconset>
    </property>
    <property name="text">
     <string>Open Table</string>
@@ -239,8 +239,8 @@
   </action>
   <action name="actionExit">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/rec/resources/ico/exit.ico</normaloff>:/rec/resources/ico/exit.ico</iconset>
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/exit.ico</normaloff>:/rec/ico/exit.ico</iconset>
    </property>
    <property name="text">
     <string>Exit</string>
@@ -248,8 +248,8 @@
   </action>
   <action name="actionRunSelected">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/rec/resources/ico/run.ico</normaloff>:/rec/resources/ico/run.ico</iconset>
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/run.ico</normaloff>:/rec/ico/run.ico</iconset>
    </property>
    <property name="text">
     <string>Run Selected</string>
@@ -262,8 +262,8 @@
   </action>
   <action name="actionNewQuery">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/rec/resources/ico/data-query.ico</normaloff>:/rec/resources/ico/data-query.ico</iconset>
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/data-query.ico</normaloff>:/rec/ico/data-query.ico</iconset>
    </property>
    <property name="text">
     <string>New Query</string>
@@ -279,7 +279,8 @@
   </action>
  </widget>
  <resources>
-  <include location="resources.qrc"/>
+  <include location="../../resources/resources.qrc"/>
+  <include location="../../resources/resources.qrc"/>
  </resources>
  <connections/>
 </ui>

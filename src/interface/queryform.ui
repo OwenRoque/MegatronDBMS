@@ -317,8 +317,8 @@
            <string>Run</string>
           </property>
           <property name="icon">
-           <iconset resource="resources.qrc">
-            <normaloff>:/rec/resources/ico/run.ico</normaloff>:/rec/resources/ico/run.ico</iconset>
+           <iconset resource="../../resources/resources.qrc">
+            <normaloff>:/rec/ico/run.ico</normaloff>:/rec/ico/run.ico</iconset>
           </property>
           <property name="autoDefault">
            <bool>false</bool>
@@ -428,7 +428,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="resources.qrc"/>
+  <include location="../../resources/resources.qrc"/>
  </resources>
  <connections/>
 </ui>

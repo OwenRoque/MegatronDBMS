@@ -18,15 +18,16 @@ Megatron::Megatron(QWidget *parent, QSharedPointer<DiskController> control)
     , ui(new Ui::Megatron)
 {
     ui->setupUi(this);
-    // This path creation could be automated
-    dbDir = QDir("E:/UNSA/2024A/BASE DE DATOS II/megatron/db");
+
+    QString dbPath(QCoreApplication::applicationDirPath() + "/db");
+    dbDir = QDir(dbPath);
     tabWidget = ui->tabWidget;
     tabWidget->setMovable(true);
     tabWidget->setTabsClosable(true);
     tableTreeWidget = ui->treeWidget;
     sysCat = &SystemCatalog::getInstance(dbDir.absolutePath(), controller);
 
-    controller->readBlock();
+    // controller->readBlock();
 
     tabWidget->setVisible(false);
     tableTreeWidget->setVisible(false);

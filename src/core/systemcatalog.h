@@ -2,7 +2,7 @@
 #define SYSTEMCATALOG_H
 
 #include "megatron_types.h"
-#include "diskcontroller.h"
+#include <diskcontroller.h>
 
 #include <QObject>
 #include <QString>
@@ -19,12 +19,12 @@ class SystemCatalog : public QObject
 {
     Q_OBJECT
 public:
-    static SystemCatalog& getInstance(const QString &dbDir = QString(),
-                                      QSharedPointer<DiskController> control = nullptr)
+    static SystemCatalog& getInstance(const QString &dbDir = QString(), QSharedPointer<DiskController> control = nullptr)
     {
         static SystemCatalog singleton(dbDir, control);
         return singleton;
     }
+
     struct attrMeta {
         QString attributeName;          // self explanatoty - 50bytes (limit)
         // QString tableName;              // self explanatory - 50bytes (limit)

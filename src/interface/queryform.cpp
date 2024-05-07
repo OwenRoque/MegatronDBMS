@@ -1,7 +1,7 @@
 #include "queryform.h"
 #include "ui_queryform.h"
-#include "systemcatalog.h"
-#include "megatron_types.h"
+#include <systemcatalog.h>
+#include <megatron_types.h>
 
 #include <QMessageBox>
 #include <QMultiMap>

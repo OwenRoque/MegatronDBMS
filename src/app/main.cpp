@@ -1,7 +1,6 @@
 #include "megatron.h"
-#include "diskinit.h"
-#include "disk.h"
-#include "diskcontroller.h"
+#include <diskinit.h>
+#include <diskcontroller.h>
 
 #include <QApplication>
 #include <QInputDialog>
@@ -11,10 +10,12 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    QString disksFile("E:/UNSA/2024A/BASE DE DATOS II/megatron/disks/");
-    QDir dir(disksFile);
+
+    QString disksPath(QCoreApplication::applicationDirPath() + "/disks/");
+    QDir dir(disksPath);
     if (!dir.exists())
-        dir.mkpath(disksFile);
+        dir.mkpath(disksPath);
+
     QFileInfoList listFiles = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries);
     QSharedPointer<Disk> disk;
     // Find disk
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
         DiskInit dialog;
         if (dialog.exec() != QDialog::Accepted)
             return 0;
-        disk = QSharedPointer<Disk>(new Disk(disksFile + dialog.name,dialog.nPlatters, dialog.nTracks,
+        disk = QSharedPointer<Disk>(new Disk(disksPath + dialog.name, dialog.nPlatters, dialog.nTracks,
                                              dialog.nSectors, dialog.sectorSize, dialog.blockSize));
         disk->init();
     }
@@ -33,8 +34,9 @@ int main(int argc, char *argv[])
         for (const QFileInfo& info : listFiles) disks.append(info.fileName());
         bool ok;
         QString name = QInputDialog::getItem(nullptr, "Load Disk", "Disks available:", disks, 0, false, &ok);
-        if (ok && !name.isEmpty()) {
-            QFile configFile(disksFile + "/" + name + "/disk.config");
+        if (ok && !name.isEmpty())
+        {
+            QFile configFile(disksPath + "/" + name + "/disk.config");
             configFile.open(QIODevice::ReadOnly | QIODevice::Text);
             int nPlatters, nTracks, nSectors, sSize, bSize;
             QTextStream in(&configFile);

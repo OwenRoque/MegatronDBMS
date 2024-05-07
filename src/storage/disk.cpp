@@ -42,7 +42,7 @@ void Disk::init()
                         QTextStream out(&sector);
                         out << "# SECTOR HEADER" << Qt::endl;   // works as delimiter
                         out << 4 << Qt::endl;
-                        if (l % blockFactor == 0) { // error
+                        if (l % blockFactor == 0) {
                             // Add block header after every blockFactor sectors
                             out << "# BLOCK HEADER" << Qt::endl;
                             // Undefined blockType, subtype atm

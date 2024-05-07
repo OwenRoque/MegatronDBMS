@@ -24,11 +24,14 @@ public:
         unsigned long int freeSpaceSize; // Actual free space (non-used)
         unsigned long int freeDiskSpace; // Total free space on disk
     };
-    void displaySpace(QWidget*, Space&) const;
+
+    void displaySpace(QWidget*, const Space&) const;
+    // space available methods
+    // disk
     Space getSpaceOf();
-    Space getSpaceOf(char object, int n);   // For block or platter
-    Space getSpaceOf(int nPlatter, int nSurface);
-    Space getSpaceOf(int nPlatter, int nSurface, int nTrack);
+    // block
+    Space getSpaceOf(int nBlock);
+    // sectors
     Space getSpaceOf(int nPlatter, int nSurface, int nTrack, int nSector);
     // Read/Write
     void readBlock();
