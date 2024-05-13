@@ -2,7 +2,7 @@
 #define SYSTEMCATALOG_H
 
 #include "megatron_types.h"
-#include <diskcontroller.h>
+#include <diskcontroller.h> // removal in the future, storageManager handles it
 
 #include <QObject>
 #include <QString>
@@ -19,7 +19,8 @@ class SystemCatalog : public QObject
 {
     Q_OBJECT
 public:
-    static SystemCatalog& getInstance(const QString &dbDir = QString(), QSharedPointer<DiskController> control = nullptr)
+    static SystemCatalog& getInstance(const QString &dbDir = QString(),
+                                      QSharedPointer<Storage::DiskController> control = nullptr)
     {
         static SystemCatalog singleton(dbDir, control);
         return singleton;
@@ -41,7 +42,7 @@ public:
     void writeToSchema(const QString &);
     QString getSchemaPath() const;
     QString getDbDirPath() const;
-    QSharedPointer<DiskController> getDiskController() const;
+    QSharedPointer<Storage::DiskController> getDiskController() const;
     QList<SystemCatalog::attrMeta> values(const QString &);
     QMultiMap<QString, SystemCatalog::attrMeta>::iterator find(const QString &);
     QMultiMap<QString, SystemCatalog::attrMeta>::iterator end();
@@ -50,12 +51,12 @@ public:
     int getSize(const QString &);
 
 private:
-    SystemCatalog(const QString &dbDir = QString(), QSharedPointer<DiskController> control = nullptr);
+    SystemCatalog(const QString &dbDir = QString(), QSharedPointer<Storage::DiskController> control = nullptr);
     // For retrieving multiple values with same key
     // <tableName, struct>
     QMultiMap<QString, attrMeta> tables;
     QDir dbDir;
-    QSharedPointer<DiskController> controller;
+    QSharedPointer<Storage::DiskController> controller;
     QString schemaPath;
     Q_DISABLE_COPY(SystemCatalog)
 };

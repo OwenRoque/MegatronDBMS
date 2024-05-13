@@ -13,7 +13,7 @@
 
 // bool is_empty(std::ifstream& pFile);
 
-Megatron::Megatron(QWidget *parent, QSharedPointer<DiskController> control)
+Megatron::Megatron(QWidget *parent, QSharedPointer<Storage::DiskController> control)
     : QMainWindow(parent), controller(control)
     , ui(new Ui::Megatron)
 {
@@ -28,6 +28,7 @@ Megatron::Megatron(QWidget *parent, QSharedPointer<DiskController> control)
     sysCat = &SystemCatalog::getInstance(dbDir.absolutePath(), controller);
 
     // controller->readBlock();
+    // controller->moveArmTo(0, 2);
 
     tabWidget->setVisible(false);
     tableTreeWidget->setVisible(false);

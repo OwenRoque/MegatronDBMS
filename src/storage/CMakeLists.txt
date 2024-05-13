@@ -1,6 +1,13 @@
 qt_add_library(storage STATIC
     disk.h disk.cpp
     diskcontroller.h diskcontroller.cpp
+    platter.h platter.cpp
+    utility.h
+    surface.h surface.cpp
+    sector.h sector.cpp
+    track.h track.cpp
+    armassembly.h armassembly.cpp
+    rwhead.h rwhead.cpp
 )
 
 target_link_libraries(storage PRIVATE

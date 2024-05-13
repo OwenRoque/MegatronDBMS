@@ -26,7 +26,7 @@ class Megatron : public QMainWindow
     Q_OBJECT
 
 public:
-    Megatron(QWidget *parent = nullptr, QSharedPointer<DiskController> control = nullptr);
+    Megatron(QWidget *parent = nullptr, QSharedPointer<Storage::DiskController> control = nullptr);
     ~Megatron();
 
 signals:
@@ -48,7 +48,7 @@ private:
     QTabWidget *tabWidget;
     QTreeWidget *tableTreeWidget;
     SystemCatalog *sysCat;
-    QSharedPointer<DiskController> controller;
+    QSharedPointer<Storage::DiskController> controller;
 
     void createActions();
     void updateActions();

@@ -1,109 +1,104 @@
 #include "disk.h"
-
 #include <QDir>
 
-Disk::Disk(const QString &name, int platters, int tracks, int sectors, int sSize, int bSize) :
-    name(name), nPlatters(platters), nTracks(tracks), nSectors(sectors), sectorSize(sSize), blockSize(bSize)
-{
-    blockFactor = blockSize / sectorSize;
-}
+int Storage::sectorSize = 0;
+int Storage::blockSize = 0;
+int Storage::blockFactor = 0;
 
-void Disk::init()
+Storage::Disk::Disk(const QString &name, int platters, int tracks,
+                    int sectors, int sSize, int bSize, bool firstInit) :
+    name(name), nPlatters(platters), nTracks(tracks), nSectors(sectors)
 {
+    sectorSize = sSize;
+    blockSize = bSize;
+    blockFactor = blockSize / sectorSize;
     createDirectory(name);
     // Configuration file to:
     // - store init disk values
-    // - manage free space in disk (QBitArray)
-    // - store sys. cat. blocks to load to cache
-    QFile configFile(name + "/disk.config");
+    // - store filesystem (sysCat blocks included, free space management too)
+    QFile configFile(name + "/" + "disk.config");
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
         out << nPlatters << " " << nTracks << " " << nSectors << " " << sectorSize << " " << blockSize << Qt::endl;
-        for (int i = 0; i < fullDiskSize() / blockSize; i++)
-            out << 0;
-        // syscat blocks go here
+        // for (int i = 0; i < fullDiskSize() / blockSize; i++)
+        //     out << 0;
+        // filesystem is created after disk
         configFile.close();
     }
-    for (int i = 0; i < nPlatters; i++) {
-        createDirectory(name + "/" + QString::number(i));
-        for (int j = 0; j < 2; j++) {
-            createDirectory(name + "/" + QString::number(i) +
-                            "/" + QString::number(j));
-            for (int k = 0; k < nTracks; k++) {
-                createDirectory(name + "/" + QString::number(i) +
-                                "/" + QString::number(j) +
-                                "/" + QString::number(k));
-                for (int l = 0; l < nSectors; l++) {
-                    QFile sector(name + "/" + QString::number(i) +
-                                 "/" + QString::number(j) +
-                                 "/" + QString::number(k) +
-                                 "/" + QString::number(l) + ".txt");
-                    if (sector.open(QIODevice::WriteOnly | QIODevice::Text)) {
-                        QTextStream out(&sector);
-                        out << "# SECTOR HEADER" << Qt::endl;   // works as delimiter
-                        out << 4 << Qt::endl;
-                        if (l % blockFactor == 0) {
-                            // Add block header after every blockFactor sectors
-                            out << "# BLOCK HEADER" << Qt::endl;
-                            // Undefined blockType, subtype atm
-                            out << Qt::endl;
-                        }
-                        sector.close();
-                    }
-                }
-            }
-        }
+    for (int i = 0, nHead = 0; i < nPlatters; i++, nHead++)
+    {
+        QString dirName = name + "/" + QString::number(i);
+        firstInit ?
+            this->platters.emplace_back(new Platter(dirName, tracks, sectors, 0, nHead, 1)) :
+            this->platters.emplace_back(new Platter(dirName, tracks, sectors));
     }
 }
 
-void Disk::createDirectory(const QString &name)
+int Storage::Disk::getNPlatters() const
 {
-    QDir directory(name);
-    if (!directory.exists())
-        directory.mkpath(name);
+    return nPlatters;
 }
 
-int Disk::getNTracks() const
+int Storage::Disk::getNTracks() const
 {
     return nTracks;
 }
 
-int Disk::getNSectors() const
+int Storage::Disk::getNSectors() const
 {
     return nSectors;
 }
 
-int Disk::getSectorSize() const
+int Storage::Disk::getSectorSize() const
 {
     return sectorSize;
 }
 
-int Disk::getBlockSize() const
+int Storage::Disk::getBlockSize() const
 {
     return blockSize;
 }
 
-double Disk::fullDiskSize() const
+int Storage::Disk::getBlockFactor() const
+{
+    return blockFactor;
+}
+
+QSharedPointer<Storage::Platter> Storage::Disk::getPlatter(int index)
+{
+    return platters.at(index);
+}
+
+double Storage::Disk::fullDiskSize() const
 {
     return nPlatters * 2 * nTracks * nSectors * sectorSize;
 }
 
-double Disk::fullPlaterSize() const
+double Storage::Disk::fullPlaterSize() const
 {
     return 2 * nTracks * nSectors * sectorSize;
 }
 
-double Disk::fullSurfaceSize() const
+double Storage::Disk::fullSurfaceSize() const
 {
     return nTracks * nSectors * sectorSize;
 }
 
-double Disk::fullTrackSize() const
+double Storage::Disk::fullTrackSize() const
 {
     return nSectors * sectorSize;
 }
 
-int Disk::getBlockFactor() const
+Utility::Space Storage::Disk::getSpace() const
 {
-    return blockFactor;
+    Space d;
+    for (const auto& platter : platters)
+    {
+        Space p = platter->getSpace();
+        d.usedSpaceSize += p.usedSpaceSize;
+        d.usedDiskSpace += p.usedDiskSpace;
+        d.freeSpaceSize += p.freeSpaceSize;
+        d.freeDiskSpace += p.freeDiskSpace;
+    }
+    return d;
 }

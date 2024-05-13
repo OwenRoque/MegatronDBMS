@@ -1,6 +1,7 @@
 qt_add_library(core STATIC
     systemcatalog.h systemcatalog.cpp
     megatron_types.h
+    storagemanager.h storagemanager.cpp
 )
 
 target_link_libraries(core PRIVATE
