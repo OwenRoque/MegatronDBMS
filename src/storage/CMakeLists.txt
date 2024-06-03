@@ -8,6 +8,7 @@ qt_add_library(storage STATIC
     track.h track.cpp
     armassembly.h armassembly.cpp
     rwhead.h rwhead.cpp
+    block.h block.cpp
 )
 
 target_link_libraries(storage PRIVATE

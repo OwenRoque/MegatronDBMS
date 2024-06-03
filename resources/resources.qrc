@@ -12,5 +12,9 @@
         <file>ico/success.ico</file>
         <file>ico/table-file.ico</file>
         <file>ico/upload-file.ico</file>
+        <file>ico/add.ico</file>
+        <file>ico/down-arrow.ico</file>
+        <file>ico/minus.ico</file>
+        <file>ico/up-arrow.ico</file>
     </qresource>
 </RCC>

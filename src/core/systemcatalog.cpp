@@ -1,14 +1,21 @@
 #include "systemcatalog.h"
 
-SystemCatalog::SystemCatalog(const QString &path, QSharedPointer<Storage::DiskController> control)
-    : dbDir(path), controller(control)
+Core::SystemCatalog::SystemCatalog() {}
+
+QMap<QString, Core::SystemCatalog::relationMeta> Core::SystemCatalog::getRelations() const
 {
-    schemaPath = dbDir.filePath("schema.txt");
+    return relations;
 }
 
-bool SystemCatalog::initSchema()
+QMultiMap<QString, Core::SystemCatalog::attributeMeta> Core::SystemCatalog::getAttributes() const
+{
+    return attributes;
+}
+
+bool Core::SystemCatalog::initSchema()
 {
     // Read schema and load 'tables' if any
+    // create serialize/deserialize and call them, this method is deprecated!!
     QFile schema(schemaPath);
     if (schema.open(QIODevice::ReadOnly | QIODevice::Text) && schema.size() != 0) {
         QTextStream in(&schema);
@@ -18,7 +25,7 @@ bool SystemCatalog::initSchema()
             QString tableName = parts.takeFirst();
             int pos = 0;
             for (int i = 0; i < parts.size(); i += 2) {
-                attrMeta meta;
+                attributeMeta meta;
                 // meta.tableName = tableName;
                 meta.attributeName = parts.at(i);
                 meta.type = parts.at(i + 1).at(0).toLatin1();
@@ -29,7 +36,7 @@ bool SystemCatalog::initSchema()
                     int end = parts[i + 1].indexOf(')');
                     meta.length = QStringView{parts[i + 1]}.mid(start, end - start).toInt();
                 }
-                tables.insert(tableName, meta);
+                attributes.insert(tableName, meta);
                 pos++;
             }
         }
@@ -38,103 +45,44 @@ bool SystemCatalog::initSchema()
     return false;
 }
 
-Types::Return SystemCatalog::parseSchemaPath(const QString &relName,
-    const QString &header, const QString &schemaFile)
+void Core::SystemCatalog::insertRelationMetadata(const QString &rn, int n, Types::FileOrganization fo, Types::RecordFormat rf, int loc)
 {
-    // Parse newSchemaFile
-    QFile newSchema(schemaFile);
-    if (!newSchema.open(QIODevice::ReadOnly | QIODevice::Text))
-        return Types::OpenError;
-    QTextStream in(&newSchema);
-
-    QString token;
-    QStringList attrNames = header.split(",");
-    for (auto& i : attrNames) {
-        i.replace('"', QString());
-        // qDebug() << i;
-    }
-
-    char c;
-    char t;
-    int l = 0;
-    int p = 0;
-    while (!in.atEnd())
+    relationMeta rm =
     {
-        in >> c;
-        if (c == ',')
-        {
-            // p++;
-            if (token == "int")             t = 'i';
-            else if (token == "float")      t = 'f';
-            else if (token == "double")     t = 'd';
-            else if (token == "boolean" ||
-                     token == "bool")       t = 'b';
-            else if (token == "tinyint")    t = 't';
-            else if (token == "char")       t = 'c';
-            else if (token == "varchar")    t = 'v';
-            else return Types::ParseError;
-            // Comma is the main delimiter between data types, so insert metadata
-            // int index = p - 1;
-            QString attrName = attrNames.at(p);
-            insertTableMetadata(attrName, relName, t, l, p);
-            l = 0; p++;
-            token.clear();
-        }
-        else if (c == '(')
-        {
-            QString length;
-            in >> c;
-            while (c != ')') {
-                length += c;
-                in >> c;
-            }
-            l = length.toInt();
-        }
-        else
-            token += c;
-    }
-    // Handle last token
-    if (!token.isEmpty()) {
-        // p++;
-        if (token == "int")             t = 'i';
-        else if (token == "float")      t = 'f';
-        else if (token == "double")     t = 'd';
-        else if (token == "boolean" ||
-                 token == "bool")       t = 'b';
-        else if (token == "tinyint")    t = 't';
-        else if (token == "char")       t = 'c';
-        else if (token == "varchar")    t = 'v';
-        else return Types::ParseError;
-        // Comma is the main delimiter between data types, so insert metadata
-        // int index = p - 1;
-        QString attrName = attrNames.at(p);
-        insertTableMetadata(attrName, relName, t, l, p);
-        p++;
-    }
-    newSchema.close();
-    // End of Parse
-    return Types::Success;
+        .relationName = rn,
+        .numberOfAttributes = n,
+        .fileOrganization = fo,
+        .recordFormat = rf,
+        .location = loc
+    };
+    relations.insert(rn, rm);
 }
 
-void SystemCatalog::insertTableMetadata(const QString &an, const QString &tn, char t, int l, int p)
+void Core::SystemCatalog::insertAttributeMetadata(const QString &rn, const QString &an, Types::DataType t, int len, int pos, bool null, bool ai)
 {
-    attrMeta tm = { .attributeName = an, .type = t, .length = l, .position = p};
+    attributeMeta tm =
+    {
+        .attributeName = an,
+        .relationName = rn,
+        .type = t,
+        .length = len,
+        .position = pos,
+        .isNull = null,
+        .autoIncrement = ai
+    };
     // qDebug() << tm.attributeName << tm.type << tm.length << tm.position;
-    tables.insert(tn, tm);
+    attributes.insert(rn, tm);
 }
 
-void SystemCatalog::insertTableMetadata(const QString &tn, const attrMeta &tm)
+// When pressed 'save' button
+void Core::SystemCatalog::writeToSchema(const QString &relName)
 {
-    tables.insert(tn, tm);
-}
-
-void SystemCatalog::writeToSchema(const QString &relName)
-{
+    // write to catalog.bin
     QFile schema(schemaPath);
     schema.open(QIODevice::Append | QIODevice::Text);
     QTextStream out(&schema);
     out << relName;
-    QList<attrMeta> values = tables.values(relName);
+    QList<attributeMeta> values = attributes.values(relName);
     // sort by position before writing
     // (even if previously inserted in order, they are not guaranteed
     // to be retrieved in the same order)
@@ -163,46 +111,41 @@ void SystemCatalog::writeToSchema(const QString &relName)
     schema.close();
 }
 
-QString SystemCatalog::getSchemaPath() const
-{
-    return schemaPath;
-}
-
-QString SystemCatalog::getDbDirPath() const
-{
-    return dbDir.absolutePath();
-}
-
-QSharedPointer<Storage::DiskController> SystemCatalog::getDiskController() const
+QSharedPointer<Storage::DiskController> Core::SystemCatalog::getDiskController() const
 {
     return controller;
 }
 
-QList<SystemCatalog::attrMeta> SystemCatalog::values(const QString &str)
+QList<Core::SystemCatalog::attributeMeta> Core::SystemCatalog::values(const QString &str)
 {
-    return tables.values(str);
+    return attributes.values(str);
 }
 
-QMultiMap<QString, SystemCatalog::attrMeta>::iterator SystemCatalog::find(const QString &str)
+QMultiMap<QString, Core::SystemCatalog::attributeMeta>::iterator Core::SystemCatalog::findInAttributes(const QString &value)
 {
-    return tables.find(str);
+    return attributes.find(value);
 }
 
-QMultiMap<QString, SystemCatalog::attrMeta>::iterator SystemCatalog::end()
+QMap<QString, Core::SystemCatalog::relationMeta>::const_iterator Core::SystemCatalog::relationConstFind(const QString &value) const
 {
-    return tables.end();
+    return relations.find(value);
 }
 
-QSet<QString> SystemCatalog::getTableNames() const
+QMultiMap<QString, Core::SystemCatalog::attributeMeta>::iterator Core::SystemCatalog::end()
+{
+    return attributes.end();
+}
+
+QSet<QString> Core::SystemCatalog::getTableNames() const
 {
     QSet<QString> tableSet;
-    for (const QString& table : tables.keys())
+    for (const QString& table : attributes.keys())
         if (!tableSet.contains(table))
             tableSet.insert(table);
     return tableSet;
 }
 
-int SystemCatalog::getSize(const QString &tableName)
+int Core::SystemCatalog::getSize(const QString &tableName)
 {
     // QList<attrMeta> values = tables.values(tableName);
     // for (const auto& i : std::as_const(values)) {
@@ -214,4 +157,28 @@ int SystemCatalog::getSize(const QString &tableName)
     int size = 0;
     // QFile file(dbDir.filePath(tableName));
     return size;
+}
+
+void Core::SystemCatalog::saveOnDisk()
+{
+    QFile file(catalogFile);
+    if (!file.open(QIODevice::WriteOnly))
+        return;
+    QDataStream out(&file);
+    // out << attributes;
+    // out << cylinderGroups;
+    file.close();
+}
+
+void Core::SystemCatalog::readFromDisk()
+{
+    QFile file(catalogFile);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    // Clear current default values
+    // cylinderGroups.clear();
+    QDataStream in(&file);
+    // in >> sib;
+    // in >> cylinderGroups;
+    file.close();
 }

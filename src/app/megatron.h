@@ -9,8 +9,7 @@
 #include <QMessageBox>
 #include <QSharedPointer>
 
-#include <systemcatalog.h>
-#include <diskcontroller.h>
+#include <database.h>
 
 class QTabWidget;
 class QTreeWidget;
@@ -26,7 +25,8 @@ class Megatron : public QMainWindow
     Q_OBJECT
 
 public:
-    Megatron(QWidget *parent = nullptr, QSharedPointer<Storage::DiskController> control = nullptr);
+    Megatron(QWidget *parent = nullptr, QString diskPath = QString(),
+             QSharedPointer<Storage::DiskController> control = nullptr);
     ~Megatron();
 
 signals:
@@ -36,22 +36,20 @@ private slots:
     QWidget* createOpenMessage(QWidget *);
     void handleOpenMessage(bool);
     void loadTableTree();
-    void createRelation(const QString &, const QString &);   // Using file
-    void createRelation();                                   // From scratch
+    void createTable();
     void createQuery();
     void deleteTabRequested(int);
     void switchTabs(int);
 
 private:
     Ui::Megatron *ui;
-    QDir dbDir;
+
     QTabWidget *tabWidget;
     QTreeWidget *tableTreeWidget;
-    SystemCatalog *sysCat;
-    QSharedPointer<Storage::DiskController> controller;
+    Core::Database database;
 
     void createActions();
     void updateActions();
-    // friend bool is_empty(std::fstream &);
+
 };
 #endif // MEGATRON_H

@@ -14,51 +14,74 @@
 #include <QSharedPointer>
 
 // SystemCatalog will be a Singleton
-
-class SystemCatalog : public QObject
+namespace Core
 {
-    Q_OBJECT
-public:
-    static SystemCatalog& getInstance(const QString &dbDir = QString(),
-                                      QSharedPointer<Storage::DiskController> control = nullptr)
+    class SystemCatalog : public QObject
     {
-        static SystemCatalog singleton(dbDir, control);
-        return singleton;
-    }
+        Q_OBJECT
+    public:
+        static SystemCatalog& getInstance()
+        {
+            static SystemCatalog singleton;
+            return singleton;
+        }
 
-    struct attrMeta {
-        QString attributeName;          // self explanatoty - 50bytes (limit)
-        // QString tableName;              // self explanatory - 50bytes (limit)
-        char type;                      // data type (int, char, etc) - 1byte
-        int length;                     // applies only for char/varchar, max length permitted. 0 otherwise - 4bytes
-        int position;                   // column position in table - 4bytes
-    };                                  // 109 b total
+        struct relationMeta
+        {
+            QString relationName;
+            int numberOfAttributes;
+            Types::FileOrganization fileOrganization;
+            Types::RecordFormat recordFormat;
+            // fileGroupId
+            int location;
+        };
 
-    bool initSchema();
+        struct attributeMeta
+        {
+            QString attributeName;          // self explanatoty - 50bytes (limit)
+            QString relationName;           // self explanatory - 50bytes (limit)
+            Types::DataType type;           // data type (int, char, etc) - 1byte
+            int length;                     // applies only for char/varchar, max length permitted. 0 otherwise - 4bytes
+            int position;                   // column position in table - 4bytes
+            bool isNull;                    // to allow null values or not - 1byte
+            int autoIncrement;             // to autoincrement its value
+        };                                  // 109 b total
 
-    Types::Return parseSchemaPath(const QString &, const QString&, const QString &);
-    void insertTableMetadata(const QString&, const QString&, char, int, int);
-    void insertTableMetadata(const QString&, const attrMeta&);
-    void writeToSchema(const QString &);
-    QString getSchemaPath() const;
-    QString getDbDirPath() const;
-    QSharedPointer<Storage::DiskController> getDiskController() const;
-    QList<SystemCatalog::attrMeta> values(const QString &);
-    QMultiMap<QString, SystemCatalog::attrMeta>::iterator find(const QString &);
-    QMultiMap<QString, SystemCatalog::attrMeta>::iterator end();
+        QMap<QString, relationMeta> getRelations() const;
+        QMultiMap<QString, attributeMeta> getAttributes() const;
 
-    QSet<QString> getTableNames() const;
-    int getSize(const QString &);
 
-private:
-    SystemCatalog(const QString &dbDir = QString(), QSharedPointer<Storage::DiskController> control = nullptr);
-    // For retrieving multiple values with same key
-    // <tableName, struct>
-    QMultiMap<QString, attrMeta> tables;
-    QDir dbDir;
-    QSharedPointer<Storage::DiskController> controller;
-    QString schemaPath;
-    Q_DISABLE_COPY(SystemCatalog)
-};
+        bool initSchema();
 
+        // Types::Return parseSchemaFile(const QString &, const QString&, const QString &);
+        void insertRelationMetadata(const QString &, int, Types::FileOrganization, Types::RecordFormat, int);
+        void insertAttributeMetadata(const QString &, const QString &, Types::DataType, int, int, bool, bool);
+
+
+        void writeToSchema(const QString &);
+        QString getSchemaPath() const;
+        QString getDbDirPath() const;
+        QSharedPointer<Storage::DiskController> getDiskController() const;
+        QList<SystemCatalog::attributeMeta> values(const QString&);
+        QMultiMap<QString, SystemCatalog::attributeMeta>::iterator findInAttributes(const QString &);
+
+        QMultiMap<QString, SystemCatalog::attributeMeta>::iterator end();
+
+        QSet<QString> getTableNames() const;
+        int getSize(const QString &);
+        void saveOnDisk();
+        void readFromDisk();
+
+    private:
+        SystemCatalog();
+        // For retrieving multiple values with same key
+        // <tableName, struct>
+        QMultiMap<QString, attributeMeta> attributes;
+        QMap<QString, relationMeta> relations;
+        QSharedPointer<Storage::DiskController> controller;
+        // QString schemaPath;
+        Q_DISABLE_COPY(SystemCatalog)
+    };
+
+}
 #endif // SYSTEMCATALOG_H

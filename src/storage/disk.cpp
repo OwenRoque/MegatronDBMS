@@ -15,16 +15,20 @@ Storage::Disk::Disk(const QString &name, int platters, int tracks,
     createDirectory(name);
     // Configuration file to:
     // - store init disk values
-    // - store filesystem (sysCat blocks included, free space management too)
     QFile configFile(name + "/" + "disk.config");
-    if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (configFile.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
         QTextStream out(&configFile);
         out << nPlatters << " " << nTracks << " " << nSectors << " " << sectorSize << " " << blockSize << Qt::endl;
-        // for (int i = 0; i < fullDiskSize() / blockSize; i++)
-        //     out << 0;
-        // filesystem is created after disk
         configFile.close();
     }
+    // create storage.bin
+    // - store storage manager data (cylinder groups metadata, inodes ...)
+    // - it will store catalog tables' location on disk
+    QFile manager(name + "/" + "storage.bin");
+    if (manager.open(QIODevice::WriteOnly | QIODevice::Text))
+        manager.close();
+
     for (int i = 0, nHead = 0; i < nPlatters; i++, nHead++)
     {
         QString dirName = name + "/" + QString::number(i);

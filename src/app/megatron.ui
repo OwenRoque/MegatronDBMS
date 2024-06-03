@@ -136,9 +136,7 @@
      <string>Table</string>
     </property>
     <addaction name="actionNewTable"/>
-    <addaction name="actionOpenTable"/>
     <addaction name="separator"/>
-    <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuStorage">
     <property name="font">
@@ -176,7 +174,7 @@
    <property name="maximumSize">
     <size>
      <width>16777215</width>
-     <height>64</height>
+     <height>76</height>
     </size>
    </property>
    <property name="font">
@@ -187,21 +185,28 @@
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomToolBarArea|Qt::TopToolBarArea</set>
+   </property>
    <property name="iconSize">
     <size>
-     <width>48</width>
-     <height>48</height>
+     <width>42</width>
+     <height>42</height>
     </size>
    </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
    <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
+    <enum>BottomToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
    <addaction name="actionNewQuery"/>
-   <addaction name="separator"/>
    <addaction name="actionNewTable"/>
+   <addaction name="separator"/>
+   <addaction name="actionExit"/>
   </widget>
   <action name="actionNewTable">
    <property name="icon">
@@ -216,7 +221,7 @@
    </property>
    <property name="font">
     <font>
-     <pointsize>11</pointsize>
+     <pointsize>9</pointsize>
     </font>
    </property>
   </action>
@@ -244,6 +249,14 @@
    </property>
    <property name="text">
     <string>Exit</string>
+   </property>
+   <property name="statusTip">
+    <string>Exit the application</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>9</pointsize>
+    </font>
    </property>
   </action>
   <action name="actionRunSelected">
@@ -273,7 +286,7 @@
    </property>
    <property name="font">
     <font>
-     <pointsize>11</pointsize>
+     <pointsize>9</pointsize>
     </font>
    </property>
   </action>

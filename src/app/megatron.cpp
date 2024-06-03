@@ -1,31 +1,25 @@
 #include "megatron.h"
 #include "./ui_megatron.h"
-#include "opentable.h"
+#include "newrelation.h"
 #include "queryform.h"
 
 #include <QDebug>
 #include <QScrollArea>
 #include <QTabWidget>
 #include <QInputDialog>
-#include <QTimer>
 
-#include <sstream>
-
-// bool is_empty(std::ifstream& pFile);
-
-Megatron::Megatron(QWidget *parent, QSharedPointer<Storage::DiskController> control)
-    : QMainWindow(parent), controller(control)
-    , ui(new Ui::Megatron)
+Megatron::Megatron(QWidget *parent, QString diskPath,
+                   QSharedPointer<Storage::DiskController> control)
+    : QMainWindow(parent), ui(new Ui::Megatron)
 {
     ui->setupUi(this);
+    QString storagePath(diskPath + "/" + "storage.bin");
+    database = Core::Database(control, storagePath);
 
-    QString dbPath(QCoreApplication::applicationDirPath() + "/db");
-    dbDir = QDir(dbPath);
     tabWidget = ui->tabWidget;
     tabWidget->setMovable(true);
     tabWidget->setTabsClosable(true);
     tableTreeWidget = ui->treeWidget;
-    sysCat = &SystemCatalog::getInstance(dbDir.absolutePath(), controller);
 
     // controller->readBlock();
     // controller->moveArmTo(0, 2);
@@ -33,13 +27,15 @@ Megatron::Megatron(QWidget *parent, QSharedPointer<Storage::DiskController> cont
     tabWidget->setVisible(false);
     tableTreeWidget->setVisible(false);
     // Load relations from schema in TreeWidget
-    if (sysCat->initSchema()) {
+    Core::SystemCatalog *sysCat = &Core::SystemCatalog::getInstance();
+    if (sysCat->initSchema())
+    {
         tableTreeWidget->setVisible(true);
         loadTableTree();
     }
-    else {
+    else
         ui->actionNewQuery->setEnabled(false);
-    }
+
     setCentralWidget(ui->centralwidget);
     // show OpenMessage default
     QWidget *openMessage = createOpenMessage(centralWidget());
@@ -157,8 +153,10 @@ void Megatron::handleOpenMessage(bool ret)
 void Megatron::loadTableTree()
 {
     tableTreeWidget->clear();
-    QSet<QString> tableNames = sysCat->getTableNames();
-    for (auto i = tableNames.cbegin(), end = tableNames.cend(); i != end; ++i) {
+    Core::SystemCatalog* sysCat = &Core::SystemCatalog::getInstance();
+    auto relations = sysCat->getRelations();
+    QList<QString> relationNames = relations.keys();
+    for (auto i = relationNames.cbegin(), end = relationNames.cend(); i != end; ++i) {
         QTreeWidgetItem *item = new QTreeWidgetItem(tableTreeWidget);
         QFont font;
         font.setPointSize(11);
@@ -167,146 +165,38 @@ void Megatron::loadTableTree()
     }
 }
 
-// bool is_empty(std::ifstream& pFile)
-// {
-//     return pFile.peek() == std::ifstream::traits_type::eof();
-// }
-
-void Megatron::createRelation(const QString &dt, const QString &sch)
+void Megatron::createTable()
 {
-    // Validate if relation already exists
-    // Check if it exists in treeWdgt
-    QFileInfo dataInfo(dt);
-    QString relName = dataInfo.baseName();
-    auto duplicateTable = [](QTreeWidget* tw, const QString& v) {
-        for (int i = 0; i < tw->topLevelItemCount(); ++i) {
-            QTreeWidgetItem* item = tw->topLevelItem(i);
-            if (item) {
-                QString value = item->text(0);
-                if (value == v)
-                    return true;
-            }
+    NewRelation dialog(this);
+    Core::RelationInput response;
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        response = dialog.getDataPackage();
+        // send to database
+        switch (database.createRelation(response))
+        {
+        case Types::Return::Success:
+        {
+            statusBar()->showMessage(tr("Loaded Relation: %1 successfully.").arg(response.relationName));
+            // add new relationForm Widget to tree
+            if (!tableTreeWidget->isVisible()) tableTreeWidget->setVisible(true);
+            ui->actionNewQuery->setEnabled(true);
+            loadTableTree();
         }
-        return false;
-    };
-    if (duplicateTable(tableTreeWidget, relName))
-    {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText("Error");
-        msgBox.setInformativeText(tr("Relation: %1 already exists. "
-                                     "Change filename and try again.").arg(relName));
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.setDefaultButton(QMessageBox::Ok);
-        msgBox.exec();
-        return;
-    }
-
-    // Read header (attribute names) from newData file
-    QFile newData(dt);
-    if (!newData.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        statusBar()->showMessage(tr("Error while opening Data file: %1").arg(dt));
-        return;
-    }
-    QTextStream in(&newData);
-    QString header = in.readLine();
-
-    // Parse new schema file, handle responses
-    Types::Return res = sysCat->parseSchemaPath(relName, header, sch);
-    switch (res) {
-    case Types::Success:
-    {
-        // Write to schemaPath
-        sysCat->writeToSchema(relName);
-        break;
-    }
-    case Types::OpenError:
-    {
-        statusBar()->showMessage(tr("Error while opening Schema file: %1").arg(sch));
-        newData.close();
-        return;
-    }
-    case Types::ParseError:
-    {
-        statusBar()->showMessage(tr("Error while parsing Schema file: %1").arg(sch));
-        newData.close();
-        return;
-    }
-    }
-
-    // Write dataFile after saving its schema
-    QFile newFile(dbDir.filePath(relName + ".txt"));
-    newFile.open(QIODevice::WriteOnly | QIODevice::Text);
-    QTextStream dout(&newFile);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        // parse record algorithm
-        std::stringstream inLine(line.toStdString());
-        QStringList values;
-        bool insideQuotes = false;
-        QString word;
-        char c;
-        while (inLine.get(c)) {
-            // qDebug() << word;
-            if (c == ',') {
-                // If no content
-                if (word.isEmpty()) {
-                    // qDebug() << "Nan";
-                    values.append("");
-                }
-                else if (insideQuotes)
-                    word+=c;
-                else {
-                    values.append(word);
-                    word.clear();
-                }
-            }
-            // not so sure about some (unlikely) cases like  ""hello", he said"
-            else if (c == '"') {
-                if (word.isEmpty())
-                    insideQuotes = true;
-                else {
-                    char p = inLine.peek();
-                    // If data ends
-                    if (p == ',') {
-                        values.append(word);
-                        word.clear();
-                        insideQuotes = false;
-                        inLine.seekg(1, std::ios_base::cur);
-                    }
-                    // Then it's a '"' inside commillas
-                    else
-                        word+=c;
-                }
-            }
-            else word+=c;
+        case Types::Return::DuplicateError:
+        {
+            QMessageBox::warning(this, "Error", tr("Relation: %1 already exists. "
+                                                   "Change the name of the relation and try again.").arg(response.relationName));
+            return;
         }
-        // handle last field
-        if (!word.isEmpty())
-            values.append(word);
-
-        for (qsizetype i = 0; i < values.size(); ++i) {
-            const auto &w = values.at(i);
-            if (i == values.size() - 1)
-                dout << w << Qt::endl;
-            else dout << w << "#";
+        case Types::Return::OpenError:
+            QMessageBox::warning(this, "Error", tr("Data File: %1 could not be opened.").arg(response.dataPath));
+            return;
+        case Types::Return::ParseError:
+            QMessageBox::warning(this, "Error", tr("Data File: %1 could not be parsed correctly.").arg(response.dataPath));
+            return;
         }
     }
-    newData.close();
-    newFile.close();
-
-    statusBar()->showMessage(tr("Loaded Relation: %1 successfully.").arg(relName));
-    // add new relationForm Widget to tree
-    if (!tableTreeWidget->isVisible()) tableTreeWidget->setVisible(true);
-    ui->actionNewQuery->setEnabled(true);
-    loadTableTree();
-}
-
-void Megatron::createRelation()
-{
-    qDebug() << "Display table to fill in attributes, then add new relationForm Widget to tree, "
-                "empty table and query default";
-    //
 }
 
 void Megatron::createQuery()
@@ -348,20 +238,11 @@ void Megatron::switchTabs(int index)
 
 void Megatron::createActions()
 {
-    ui->actionOpenTable->setShortcut(QKeySequence::Open);
-    connect(ui->actionOpenTable, &QAction::triggered, this, [this]() {
-        OpenTable dialog(this);
-        QString dataFile, schemaFile;
-        if (dialog.exec() == QDialog::Accepted) {
-            dataFile = dialog.getDataPath();
-            schemaFile = dialog.getSchemaPath();
-            // qDebug() << dataPath; qDebug() << schemaPath;
-            createRelation(dataFile, schemaFile);
-        }
-    });
-
     ui->actionNewTable->setShortcut(QKeySequence::New);
-    connect(ui->actionNewTable, &QAction::triggered, this, [this](){ createRelation(); });
+    connect(ui->actionNewTable, &QAction::triggered, this, &Megatron::createTable);
+
+    // ui->actionOpenTable->setShortcut(QKeySequence::Open);
+    // connect(ui->actionOpenTable, &QAction::triggered, this, &Megatron::openTable);
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Megatron::deleteTabRequested);
     connect(this, &Megatron::messageVisible, this, &Megatron::handleOpenMessage);

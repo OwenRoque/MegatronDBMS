@@ -18,16 +18,20 @@ int main(int argc, char *argv[])
         dir.mkpath(disksPath);
 
     QFileInfoList listFiles = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries);
+    QString diskPath;
     QSharedPointer<Storage::Disk> disk;
     // find disk
+    // If there's no disk previously created, create a new one
     if (listFiles.isEmpty())
     {
         DiskInit dialog;
         if (dialog.exec() != QDialog::Accepted)
             return 0;
-        disk = QSharedPointer<Storage::Disk>(new Storage::Disk(disksPath + "/" + dialog.name, dialog.nPlatters, dialog.nTracks,
+        diskPath = disksPath + "/" + dialog.name;
+        disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, dialog.nPlatters, dialog.nTracks,
                                              dialog.nSectors, dialog.sectorSize, dialog.blockSize, true));
     }
+    // or choose a disk (multiple disks can be created, each one with different data)
     else
     {
         QStringList disks;
@@ -41,13 +45,14 @@ int main(int argc, char *argv[])
             int nPlatters, nTracks, nSectors, sSize, bSize;
             QTextStream in(&configFile);
             in >> nPlatters >> nTracks >> nSectors >> sSize >> bSize;
-            disk = QSharedPointer<Storage::Disk>(new Storage::Disk(disksPath + "/" + name, nPlatters, nTracks, nSectors, sSize, bSize, false));
+            diskPath = disksPath + "/" + name;
+            disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, nPlatters, nTracks, nSectors, sSize, bSize, false));
         }
         else
             return 0;
     }
     QSharedPointer<Storage::DiskController> controller(new Storage::DiskController(disk));
-    Megatron w(nullptr, controller);
+    Megatron w(nullptr, diskPath, controller);
     w.show();
     return a.exec();
 }

@@ -7,7 +7,7 @@ qt_add_resources(QRC_SOURCES
 qt_add_library(interface STATIC
     ${QRC_SOURCES}
     diskinit.ui diskinit.h diskinit.cpp
-    opentable.ui opentable.h opentable.cpp
+    newrelation.ui newrelation.h newrelation.cpp
     queryform.ui queryform.h queryform.cpp
 )
 
