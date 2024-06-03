@@ -1,5 +1,7 @@
 #include "database.h"
 #include "heapfile.h"
+#include "record.h"
+#include <QPointer>
 
 Core::Database::Database(QSharedPointer<Storage::DiskController> dc, QString storageFile)
 {
@@ -21,6 +23,8 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     {
         bulkInsert = true;
         // Extract records and calculate fileSize (overhead included)
+        int fileSize;
+        QQueue<QPointer<Core::Record>> records;
         QFile newData(response.dataPath);
         if (newData.open(QIODevice::ReadOnly))
         {
