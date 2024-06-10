@@ -1,7 +1,7 @@
 qt_add_library(core STATIC
     database.h database.cpp
     megatron_types.h megatron_structs.h
-    file.h file.cpp
+    file.h
     heapfile.h heapfile.cpp
     page.h page.cpp
 

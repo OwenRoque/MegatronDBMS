@@ -16,6 +16,7 @@ namespace Core
         virtual QVariant getField(const QString&, int) const = 0;
         virtual bool setField(const QString&, int, const QVariant&) = 0;
         virtual int size() const = 0;
+        virtual QByteArray toBytes() const = 0;
     protected:
         QByteArray data;
 
@@ -29,6 +30,7 @@ namespace Core
         QVariant getField(const QString&, int) const override;
         bool setField(const QString&, int, const QVariant&) override;
         int size() const override;
+        QByteArray toBytes() const override;
 
     };
 
@@ -40,6 +42,7 @@ namespace Core
         QVariant getField(const QString&, int) const override;
         bool setField(const QString&, int, const QVariant&) override;
         int size() const override;
+        QByteArray toBytes() const override;
 
     private:
         QBitArray nullBitmap;

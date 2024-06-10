@@ -147,6 +147,8 @@
     <property name="title">
      <string>Storage</string>
     </property>
+    <addaction name="actionDiskUsage"/>
+    <addaction name="actionDiskGeneralInfo"/>
    </widget>
    <widget class="QMenu" name="menuQuery">
     <property name="font">
@@ -198,7 +200,7 @@
     <enum>Qt::ToolButtonTextUnderIcon</enum>
    </property>
    <attribute name="toolBarArea">
-    <enum>BottomToolBarArea</enum>
+    <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>
@@ -206,6 +208,7 @@
    <addaction name="actionNewQuery"/>
    <addaction name="actionNewTable"/>
    <addaction name="separator"/>
+   <addaction name="actionDiskGeneralInfo"/>
    <addaction name="actionExit"/>
   </widget>
   <action name="actionNewTable">
@@ -214,32 +217,13 @@
      <normaloff>:/rec/ico/new-table.ico</normaloff>:/rec/ico/new-table.ico</iconset>
    </property>
    <property name="text">
-    <string>New Table</string>
+    <string>New Table...</string>
    </property>
    <property name="statusTip">
     <string>Create a New Table/Relation</string>
    </property>
    <property name="font">
-    <font>
-     <pointsize>9</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionOpenTable">
-   <property name="icon">
-    <iconset resource="../../resources/resources.qrc">
-     <normaloff>:/rec/ico/table-file.ico</normaloff>:/rec/ico/table-file.ico</iconset>
-   </property>
-   <property name="text">
-    <string>Open Table</string>
-   </property>
-   <property name="statusTip">
-    <string>Open an External Table/Relation</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>11</pointsize>
-    </font>
+    <font/>
    </property>
   </action>
   <action name="actionExit">
@@ -254,9 +238,7 @@
     <string>Exit the application</string>
    </property>
    <property name="font">
-    <font>
-     <pointsize>9</pointsize>
-    </font>
+    <font/>
    </property>
   </action>
   <action name="actionRunSelected">
@@ -285,9 +267,24 @@
     <string>Create a new Query</string>
    </property>
    <property name="font">
-    <font>
-     <pointsize>9</pointsize>
-    </font>
+    <font/>
+   </property>
+  </action>
+  <action name="actionDiskUsage">
+   <property name="text">
+    <string>Show Disk Usage</string>
+   </property>
+  </action>
+  <action name="actionDiskGeneralInfo">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../resources/resources.qrc">
+     <normaloff>:/rec/ico/block.ico</normaloff>:/rec/ico/block.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Show Disk General Information</string>
    </property>
   </action>
  </widget>

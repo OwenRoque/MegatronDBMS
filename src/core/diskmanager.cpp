@@ -1,7 +1,7 @@
 #include "diskmanager.h"
 #include <cmath>
 
-int Core::autoGrowthFactor = 2;
+qsizetype Core::autoGrowthFactor = 2;
 
 Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, QString storageFile)
     : controller(control), storageFile(storageFile)
@@ -40,8 +40,8 @@ Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, 
     {
         .numFileGroups = 0,
         .numFileNodes = 0,
-        .fileNodeIdCounter = 0,
-        .fileGroupIdCounter = 0
+        .fileNodeIdCounter = 1,
+        .fileGroupIdCounter = 1
     };
 }
 
@@ -92,6 +92,7 @@ int Core::DiskManager::allocateBlock()
         blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + relativeBlockAddress;
         return blockAddress;
     }
+    qDebug() << "The disk is full, no space for more block allocations.";
     return blockAddress;
 }
 
@@ -145,6 +146,11 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
                     // recalculate cylinder fragmentation
                     current.fragmentation = fragmentationLevel(current.blockMap);
                     node.blocks = blockAddresses;
+                    node.id = sib.fileNodeIdCounter;
+                    // update global counters
+                    sib.fileNodeIdCounter++;
+                    sib.numFileNodes++;
+                    current.superBlock.numFileNodes++;
                     return node;
                 }
             }
@@ -177,6 +183,11 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
                     // recalculate cylinder fragmentation
                     current.fragmentation = fragmentationLevel(current.blockMap);
                     node.blocks = blockAddresses;
+                    node.id = sib.fileNodeIdCounter;
+                    // update global counters
+                    sib.fileNodeIdCounter++;
+                    sib.numFileNodes++;
+                    current.superBlock.numFileNodes++;
                     return node;
                 }
             }
@@ -218,12 +229,28 @@ void Core::DiskManager::deallocateFileNode(Core::FileNode& node)
     {
         auto current = cylinderGroups.at(c);
         current.fragmentation = fragmentationLevel(current.blockMap);
+        // update global counters
+        sib.numFileNodes--;
+        current.superBlock.numFileNodes--;
     }
-    // reset Filenode (fileGroup will delete it anyway)
+    // reset fileNode
     node.id = -1;
     node.cylinderGroup = -1;
     node.blocks.clear();
     node.size = 0;
+}
+
+bool Core::DiskManager::autogrowFileNode(Core::FileNode &node)
+{
+    // allocate more constant space every time the FileNode is full/near full.
+    // This technique reduces the frequency of allocations and can improve efficiency.
+    QList<int> extraBlocks(Core::autoGrowthFactor, -1);
+    for (int i = 0; i < Core::autoGrowthFactor; ++i)
+        extraBlocks.append(this->allocateBlock());
+    if (extraBlocks.first() == -1)
+        return false;
+    node.blocks.append(extraBlocks);
+    return true;
 }
 
 float Core::DiskManager::fragmentationLevel(const QBitArray& bm)
@@ -244,9 +271,9 @@ float Core::DiskManager::fragmentationLevel(const QBitArray& bm)
     return std::round(fragment * 1000.0) / 1000.0;
 }
 
-int Core::DiskManager::newFileGroup(Types::FileOrganization fo, int fileSize)
+quint64 Core::DiskManager::newFileGroup(Types::FileOrganization fo, quint64 fileSize)
 {
-    int FileGroupLocation = -1;
+    quint64 FileGroupLocation = 0;
     switch (fo)
     {
     case Types::FileOrganization::Heap:
@@ -259,8 +286,9 @@ int Core::DiskManager::newFileGroup(Types::FileOrganization fo, int fileSize)
 
         // fileGroupId from Information Block
         FileGroupLocation = sib.fileGroupIdCounter;
-        // update global counter
+        // update global counters
         sib.fileGroupIdCounter++;
+        sib.numFileGroups++;
         // insert FileGroup
         fileGroups.insert(FileGroupLocation, QVariant::fromValue(heap));
         break;
@@ -273,8 +301,9 @@ int Core::DiskManager::newFileGroup(Types::FileOrganization fo, int fileSize)
 
         // fileGroupId
         FileGroupLocation = sib.fileGroupIdCounter;
-        // update global counter
+        // update global counters
         sib.fileGroupIdCounter++;
+        sib.numFileGroups++;
         // insert FileGroup
         fileGroups.insert(FileGroupLocation, QVariant::fromValue(sequential));
         // 5 bytes is the size of a RID
@@ -298,11 +327,15 @@ bool Core::DiskManager::deleteFileGroup(int fileGroupId)
         HeapGroup heap = filegroup.value().value<Core::HeapGroup>();
         deallocateFileNode(heap.freeSpace);
         deallocateFileNode(heap.data);
+        // update global counters
+        sib.numFileGroups--;
     }
     else if (filegroup.value().canConvert<Core::SequentialGroup>())
     {
         SequentialGroup sequential = filegroup.value().value<Core::SequentialGroup>();
         deallocateFileNode(sequential.data);
+        // update global counters
+        sib.numFileGroups--;
     }
     else if (filegroup.value().canConvert<Core::HashGroup>())
     {

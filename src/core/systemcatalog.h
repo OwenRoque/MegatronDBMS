@@ -16,6 +16,8 @@
 // SystemCatalog will be a Singleton
 namespace Core
 {
+    constexpr Types::Charset Default = Types::Charset::Utf16;
+
     class SystemCatalog : public QObject
     {
         Q_OBJECT
@@ -26,49 +28,102 @@ namespace Core
             return singleton;
         }
 
+        struct charsetMeta
+        {
+            Types::Charset charset;
+            QString charsetName;
+            QString description;
+            quint8 maxlen;
+        };
+
         struct relationMeta
         {
             QString relationName;
-            int numberOfAttributes;
+            quint8 numberOfAttributes;
             Types::FileOrganization fileOrganization;
             Types::RecordFormat recordFormat;
+            Types::Charset charset;
+            quint64 autoIncrement;
             // fileGroupId
-            int location;
+            quint64 location;
+            friend bool operator==(const relationMeta& a, const relationMeta& b)
+            {
+                return a.relationName == b.relationName;
+            }
+        };
+
+        // ADD to relations/attributes
+        struct indexMeta
+        {
+            QString indexName;
+            QString relationName;
+            QString attributeName;
+            Types::IndexType indexType;
+            bool isNonUnique;
+            bool isNullable;
+            bool isClustered;
+            Types::Order ordering;
+            quint8 ordinalPosition;
+            QString comment;
+            QString referencedRelation;     // for foreign only
+            QString referencedAttribute;    // for foreign only
         };
 
         struct attributeMeta
         {
-            QString attributeName;          // self explanatoty - 50bytes (limit)
-            QString relationName;           // self explanatory - 50bytes (limit)
-            Types::DataType type;           // data type (int, char, etc) - 1byte
-            int length;                     // applies only for char/varchar, max length permitted. 0 otherwise - 4bytes
-            int position;                   // column position in table - 4bytes
-            bool isNull;                    // to allow null values or not - 1byte
-            int autoIncrement;             // to autoincrement its value
-        };                                  // 109 b total
+            QString attributeName;
+            QString relationName;
+            Types::DataType dataType;
+            QString columnType;
+            quint16 maxCharacterLength;
+            quint32 maxByteLength;
+            QString defaultValue;
+            quint8 ordinalPosition;
+            bool isNullable;
+            bool isUnsigned;
+            bool autoIncrement;
+            Types::KeyConstraintType key;
+            QString comment;
+            friend bool operator==(const attributeMeta& a, const attributeMeta& b)
+            {
+                return (a.attributeName == b.attributeName) &&
+                       (a.relationName == b.relationName);
+            }
+            friend bool operator<(const attributeMeta& a, const attributeMeta& b)
+            {
+                return a.ordinalPosition < b.ordinalPosition;
+            }
+        };
 
-        QMap<QString, relationMeta> getRelations() const;
-        QMultiMap<QString, attributeMeta> getAttributes() const;
+        auto insertRelation(const relationMeta&) -> QMap<QString, relationMeta>::iterator;
+        auto deleteRelation(const QString&) -> QMap<QString, relationMeta>::size_type;
+        auto findRelation(const QString&) -> QMap<QString, relationMeta>::iterator;
+        auto constFindRelation(const QString&) const -> QMap<QString, relationMeta>::const_iterator;
+        bool relationExists(const QString&) const;
+        auto relationSize() const -> QMap<QString, relationMeta>::size_type;
+        auto listRelationKeys() const -> QList<QString>;
+        auto listRelationValues() const -> QList<relationMeta>;
+        // QMap useful methods to access to relations ...
 
+        auto insertAttribute(const attributeMeta&) -> QMultiMap<QString, attributeMeta>::iterator;
+        auto deleteAttribute(const QString&, const QString&) -> QMultiMap<QString, attributeMeta>::size_type;
+        auto findAttributesFor(const QString&) -> std::pair<QMultiMap<QString, attributeMeta>::iterator, QMultiMap<QString, attributeMeta>::iterator>;
+        auto constFindAttributesFor(const QString&) const -> std::pair<QMultiMap<QString, attributeMeta>::const_iterator, QMultiMap<QString, attributeMeta>::const_iterator>;
+        auto numberOfAttributes(const QString&) const -> QMultiMap<QString, attributeMeta>::size_type;
+        auto findAttribute(const QString&, const QString&) -> QMultiMap<QString, attributeMeta>::iterator;
+        auto constFindAttribute(const QString&, const QString&) -> QMultiMap<QString, attributeMeta>::const_iterator;
+        void updateOrdinalPositions(const QString&);
+        // QMultimap useful methods to access to attributes ...
 
+        auto findCharset(const Types::Charset&) -> QMap<Types::Charset, charsetMeta>::iterator;
+        auto constFindCharset(const Types::Charset&) const -> QMap<Types::Charset, charsetMeta>::const_iterator;
+        // QMap useful methods to access to charsets ...
+
+        // fix these and that's it
         bool initSchema();
-
-        // Types::Return parseSchemaFile(const QString &, const QString&, const QString &);
-        void insertRelationMetadata(const QString &, int, Types::FileOrganization, Types::RecordFormat, int);
-        void insertAttributeMetadata(const QString &, const QString &, Types::DataType, int, int, bool, bool);
-
-
         void writeToSchema(const QString &);
-        QString getSchemaPath() const;
-        QString getDbDirPath() const;
         QSharedPointer<Storage::DiskController> getDiskController() const;
-        QList<SystemCatalog::attributeMeta> values(const QString&);
-        QMultiMap<QString, SystemCatalog::attributeMeta>::iterator findInAttributes(const QString &);
 
-        QMultiMap<QString, SystemCatalog::attributeMeta>::iterator end();
-
-        QSet<QString> getTableNames() const;
-        int getSize(const QString &);
         void saveOnDisk();
         void readFromDisk();
 
@@ -78,6 +133,8 @@ namespace Core
         // <tableName, struct>
         QMultiMap<QString, attributeMeta> attributes;
         QMap<QString, relationMeta> relations;
+        QMap<Types::Charset, charsetMeta> charsets;
+
         QSharedPointer<Storage::DiskController> controller;
         // QString schemaPath;
         Q_DISABLE_COPY(SystemCatalog)

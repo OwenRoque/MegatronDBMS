@@ -18,7 +18,7 @@ namespace Core
 {
     // number of blocks to be added to a fileNode
     // every time it's full/near full
-    extern int autoGrowthFactor;
+    extern qsizetype autoGrowthFactor;
 
     // Global Information about number of file-nodes/groups,
     // it also records changes that take place as the filesystem is used
@@ -79,17 +79,15 @@ namespace Core
         QSharedPointer<Storage::Block> readBlock(int, QByteArray&);
         void writeBlock(int, QSharedPointer<Storage::Block>);
 
-        // fileId = node = <cylinder, inode>
-        // void readFile(std::tuple<int, int>, QByteArray&);
-        // void writeFile(std::tuple<int, int>, const QByteArray&);
         // storage policy: Data Organization by Cylinders
         int allocateBlock();
         void deallocateBlock(int);
         Core::FileNode allocateFileNode(int fileSize = Storage::blockSize);
         void deallocateFileNode(Core::FileNode&);
+        bool autogrowFileNode(Core::FileNode&);
         float fragmentationLevel(const QBitArray&);
 
-        int newFileGroup(Types::FileOrganization fo, int fileSize = Storage::blockSize);
+        quint64 newFileGroup(Types::FileOrganization fo, quint64 fileSize = Storage::blockSize);
         bool deleteFileGroup(int);
         QVariant locateFileGroup(int);
         QList<QPair<int, int>> findFreeGroups(const QBitArray&);
@@ -116,19 +114,6 @@ namespace Core
     struct FileNode
     {
         FileNode() = default;
-        // allocate more constant space every time the FileNode is full/near full.
-        // This technique reduces the frequency of allocations and can improve efficiency.
-        bool autogrow()
-        {
-            QList<int> extraBlocks(Core::autoGrowthFactor, -1);
-            Core::DiskManager *dm = &Core::DiskManager::getInstance();
-            for (int i = 0; i < Core::autoGrowthFactor; ++i)
-                extraBlocks.append(dm->allocateBlock());
-            if (extraBlocks.first() == -1)
-                return false;
-            blocks.append(extraBlocks);
-            return true;
-        }
 
         // fileNode ID
         int id;
@@ -138,6 +123,8 @@ namespace Core
         QList<int> blocks;
         // location
         int cylinderGroup;
+        // moved autogrow method to DiskManager
+        // dm instance would've invalidated previous data from higher dm instances
 
         friend QDataStream& operator<<(QDataStream& out, const FileNode& node) {
             out << node.size << node.blocks;

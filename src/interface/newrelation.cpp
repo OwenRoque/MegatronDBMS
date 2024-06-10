@@ -1,4 +1,4 @@
-#include "newrelation.h"
+﻿#include "newrelation.h"
 #include "ui_newrelation.h"
 
 NewRelation::NewRelation(QWidget *parent)
@@ -6,17 +6,22 @@ NewRelation::NewRelation(QWidget *parent)
     , ui(new Ui::NewRelation)
 {
     ui->setupUi(this);
-    ui->OrgComboBox->addItem("Heap", Types::FileOrganization::Heap);
-    ui->OrgComboBox->addItem("Sequential/Sorted", Types::FileOrganization::Sequential);
-    ui->OrgComboBox->addItem("Hash", Types::FileOrganization::Hash);
-    ui->OrgComboBox->addItem("B+", Types::FileOrganization::BPlusTree);
+    ui->orgComboBox->addItem("Heap", QVariant::fromValue(Types::FileOrganization::Heap));
+    ui->orgComboBox->addItem("Sequential/Sorted"/*, QVariant::fromValue(Types::FileOrganization::Sequential)*/);
+    ui->orgComboBox->addItem("Hash"/*, QVariant::fromValue(Types::FileOrganization::Hash)*/);
+    ui->orgComboBox->addItem("B+"/*, QVariant::fromValue(Types::FileOrganization::BPlusTree)*/);
 
     // TODO: enable more FOs when they are implemented
-    auto* model = qobject_cast<QStandardItemModel*>(ui->OrgComboBox->model());
+    auto* model = qobject_cast<QStandardItemModel*>(ui->orgComboBox->model());
     for (int i = 1; i < 4; i++) {
         auto* item = model->item(i);
         item->setEnabled(false);
     }
+
+    ui->charsetComboBox->addItem("UTF-8" , QVariant::fromValue(Types::Charset::Utf8));
+    ui->charsetComboBox->addItem("UTF-16 (Default)", QVariant::fromValue(Types::Charset::Utf16));
+    ui->charsetComboBox->addItem("UTF-32" , QVariant::fromValue(Types::Charset::Utf32));
+    ui->charsetComboBox->addItem("Latin1" , QVariant::fromValue(Types::Charset::Latin1));
 
     connect(ui->dataToolButton, &QToolButton::clicked, this, &NewRelation::open);
     connect(ui->groupBox, &QGroupBox::toggled, this, [=](bool toggled) {
@@ -49,6 +54,7 @@ Core::RelationInput NewRelation::getDataPackage() const
     package.indexes = this->indexes;
     package.fileOrg = this->fileOrg;
     package.recFormat = this->recFormat;
+    package.charset = this->charset;
     return package;
 }
 
@@ -60,17 +66,19 @@ void NewRelation::addRow()
     QLineEdit *nameLineEdit = new QLineEdit(this);
     nameLineEdit->setMaxLength(50);
     ui->tableWidget->setCellWidget(newRow, 0, nameLineEdit);
+    ui->tableWidget->setColumnWidth(0, 200);
 
     QComboBox *typeLineEdit = new QComboBox(this);
-    typeLineEdit->addItem("TINYINT", Types::DataType::TinyInt);
-    typeLineEdit->addItem("SMALLINT", Types::DataType::SmallInt);
-    typeLineEdit->addItem("INT", Types::DataType::Int);
-    typeLineEdit->addItem("BIGINT", Types::DataType::BigInt);
-    typeLineEdit->addItem("FLOAT", Types::DataType::Float);
-    typeLineEdit->addItem("DOUBLE", Types::DataType::Double);
-    typeLineEdit->addItem("BOOL", Types::DataType::Bool);
-    typeLineEdit->addItem("CHAR()", Types::DataType::Char);
-    typeLineEdit->addItem("VARCHAR()", Types::DataType::Varchar);
+    typeLineEdit->addItem("");
+    typeLineEdit->addItem("TINYINT", QVariant::fromValue(Types::DataType::TinyInt));
+    typeLineEdit->addItem("SMALLINT", QVariant::fromValue(Types::DataType::SmallInt));
+    typeLineEdit->addItem("INT", QVariant::fromValue(Types::DataType::Int));
+    typeLineEdit->addItem("BIGINT", QVariant::fromValue(Types::DataType::BigInt));
+    typeLineEdit->addItem("FLOAT", QVariant::fromValue(Types::DataType::Float));
+    typeLineEdit->addItem("DOUBLE", QVariant::fromValue(Types::DataType::Double));
+    typeLineEdit->addItem("BOOL", QVariant::fromValue(Types::DataType::Bool));
+    typeLineEdit->addItem("CHAR()", QVariant::fromValue(Types::DataType::Char));
+    typeLineEdit->addItem("VARCHAR()", QVariant::fromValue(Types::DataType::Varchar));
     typeLineEdit->setEditable(true);
     typeLineEdit->setInsertPolicy(QComboBox::NoInsert);
     typeLineEdit->lineEdit()->setReadOnly(true);
@@ -85,21 +93,41 @@ void NewRelation::addRow()
             typeLineEdit->lineEdit()->setReadOnly(true);
         }
         // qDebug() << "Selected Type:" << type;
+
     });
-
     ui->tableWidget->setCellWidget(newRow, 1, typeLineEdit);
+    ui->tableWidget->setColumnWidth(1, 150);
 
-    QComboBox *keyComboBox = new QComboBox(this);
-    keyComboBox->addItem("NONE", Types::KeyType::None);
-    keyComboBox->addItem("PRIMARY", Types::KeyType::Primary);
-    keyComboBox->addItem("UNIQUE", Types::KeyType::Unique);
-    ui->tableWidget->setCellWidget(newRow, 2, keyComboBox);
+    QComboBox *indexComboBox = new QComboBox(this);
+    indexComboBox->addItem("", Types::KeyConstraintType::None);
+    indexComboBox->addItem("PRIMARY", Types::KeyConstraintType::Primary);
+    indexComboBox->addItem("UNIQUE", Types::KeyConstraintType::Unique);
+    indexComboBox->addItem("INDEX", Types::KeyConstraintType::Index);
+    ui->tableWidget->setCellWidget(newRow, 2, indexComboBox);
+    ui->tableWidget->setColumnWidth(2, 125);
 
-    QCheckBox *nullRadioButton = new QCheckBox(this);
-    ui->tableWidget->setCellWidget(newRow, 3, nullRadioButton);
+    QLineEdit *defaultLineEdit = new QLineEdit(this);
+    ui->tableWidget->setCellWidget(newRow, 3, defaultLineEdit);
+    ui->tableWidget->setColumnWidth(3, 125);
 
-    QCheckBox *aiRadioButton = new QCheckBox(this);
-    ui->tableWidget->setCellWidget(newRow, 4, aiRadioButton);
+    QCheckBox *unsignedCheckBox = new QCheckBox(this);
+    ui->tableWidget->setCellWidget(newRow, 4, unsignedCheckBox);
+    ui->tableWidget->setColumnWidth(4, 80);
+
+    QCheckBox *nullCheckBox = new QCheckBox(this);
+    ui->tableWidget->setCellWidget(newRow, 5, nullCheckBox);
+    ui->tableWidget->setColumnWidth(5, 80);
+
+    QCheckBox *aiCheckBox = new QCheckBox(this);
+    ui->tableWidget->setCellWidget(newRow, 6, aiCheckBox);
+    ui->tableWidget->setColumnWidth(6, 80);
+
+    QLineEdit *commentLineEdit = new QLineEdit(this);
+    ui->tableWidget->setCellWidget(newRow, 7, commentLineEdit);
+    nameLineEdit->setMaxLength(255);
+    ui->tableWidget->setColumnWidth(7, 100);
+
+    ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
 }
 
 void NewRelation::removeRow()
@@ -194,114 +222,137 @@ bool NewRelation::validate()
     }
     // validate while setting values
     relationName = ui->relNameLineEdit->text().simplified();
-    QVariant value = ui->OrgComboBox->currentData();
-    fileOrg = static_cast<Types::FileOrganization>(value.toInt());
+    fileOrg = ui->orgComboBox->currentData().value<Types::FileOrganization>();
     if (ui->fixedRadioButton->isChecked()) recFormat = Types::RecordFormat::Fixed;
     else recFormat = Types::RecordFormat::Variable;
-    QString primaryField;
+    charset = ui->charsetComboBox->currentData().value<Types::Charset>();
+
+    // Create GUI for index creation (PRIMARY, UNIQUE, INDEX)
+    quint8 nPrimaryKeys = 0;
     for (int row = 0; row < ui->tableWidget->rowCount(); ++row)
     {
-        QString attribName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 0))->text().simplified();
-        QVariant typeValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentData();
-        QString text = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentText().simplified();
-        QVariant keyValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 2))->currentData();
-        bool null = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 3))->isChecked();
-        QCheckBox* ai = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 4));
-        int autoIncrement = (ai->isChecked()) ? 1 : -1;
+        QString attributeName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 0))->text().simplified();
+        Types::DataType typeValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentData().value<Types::DataType>();
+        QString typeCharLength = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentText().simplified();
+        Types::KeyConstraintType keyValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 2))->currentData().value<Types::KeyConstraintType>();
+        QString defaultValue = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 3))->text().simplified();
+        bool isUnsigned = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 4))->isChecked();
+        bool isNullable = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 5))->isChecked();
+        bool ai = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 6))->isChecked();
+        QString commentValue = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 7))->text().simplified();
+
         // empty row
-        if (attribName.isEmpty())
+        if (attributeName.isEmpty())
         {
             QMessageBox::warning(this, "Warning", "Row " + QString::number(row) + " has no attribute name.");
             attributes.clear();
             indexes.clear();
             return false;
         }
-        // valid type
-        Types::DataType type = static_cast<Types::DataType>(typeValue.toInt()); int length = -1;
-        QRegularExpression charRegex("^CHAR\\((\\d+)\\)$");
-        QRegularExpression varcharRegex("^VARCHAR\\((\\d+)\\)$");
 
+        // valid type
+        quint16 length = 0;
+        static QRegularExpression charRegex("^CHAR\\((\\d+)\\)$");
+        static QRegularExpression varcharRegex("^VARCHAR\\((\\d+)\\)$");
         QRegularExpressionMatch match;
-        if (type == Types::Char && (match = charRegex.match(text)).hasMatch()) {
-            length = match.captured(1).toInt();
-        } else if (type == Types::Varchar && (match = varcharRegex.match(text)).hasMatch()) {
+
+        if (typeValue == Types::Char && (match = charRegex.match(typeCharLength)).hasMatch())
+        {
+            length = match.captured(1).toUShort();
+        }
+        else if (typeValue == Types::Varchar && (match = varcharRegex.match(typeCharLength)).hasMatch())
+        {
             if (recFormat == Types::RecordFormat::Fixed)
             {
                 QMessageBox::warning(this, "Warning",
-                    tr("Fixed-Length Record Format does not support VARCHAR datatype. "
-                        "Use a Variable-Length Record Format instead. (Declared in: %1)").arg(attribName));
+                    tr("Fixed-Length Record Format does not support VARCHAR datatypes. "
+                        "Use a Variable-Length Record Format or change your VARCHAR field to CHAR (Declared in: %1)").arg(attributeName));
                 attributes.clear();
                 indexes.clear();
                 return false;
             }
-            length = match.captured(1).toInt();
+            length = match.captured(1).toUShort();
         }
-        else {
-            QMessageBox::warning(this, "Warning", tr("Incorrect syntax: %1 in row %2").arg(text).arg(row));
+        else
+        {
+            QMessageBox::warning(this, "Warning", tr("Incorrect syntax: %1 in row %2").arg(typeCharLength).arg(row));
             attributes.clear();
             indexes.clear();
             return false;
         }
+
         // Create indexes according to defined keys
-        Types::KeyType key = static_cast<Types::KeyType>(keyValue.toInt());
-        switch (key) {
-        case Types::KeyType::Primary:
+        switch (keyValue) {
+        case Types::KeyConstraintType::Primary:
         {
-            if (primaryField.isEmpty())
-            {
-                primaryField = attribName;
-                QString indexName = "PK_" + relationName + "_" + attribName;
-                Types::IndexType idx;
-                switch (fileOrg) {
-                case Types::FileOrganization::Heap:
-                    idx = Types::IndexType::NonClusterIndex;
-                    break;
-                case Types::FileOrganization::Sequential:
-                    idx = Types::IndexType::ClusterIndex;
-                    break;
-                case Types::FileOrganization::Hash:
-                    idx = Types::IndexType::HashIndex;
-                    break;
-                case Types::FileOrganization::BPlusTree:
-                    idx = Types::IndexType::BPlusTreeIndex;
-                    break;
-                }
-                Core::IndexProperties idxProp =
-                    {
-                        .columns = {attribName},
-                        .keyType = key,
-                        .columnOrders = {Core::IndexProperties::ASC}
-                    };
-                indexes.emplace_back(indexName, attribName, idx, idxProp);
+            QString indexName = "PK_" + relationName + "_" + attributeName;
+            Types::IndexType idx;
+            switch (fileOrg) {
+            case Types::FileOrganization::Sequential:
+                idx = Types::IndexType::SequentialIndex;
+                break;
+            case Types::FileOrganization::Hash:
+                idx = Types::IndexType::HashIndex;
+                break;
+            case Types::FileOrganization::BPlusTree:
+                idx = Types::IndexType::BPlusTreeIndex;
+                break;
+                // This case won't ever happen
+            case Types::FileOrganization::Heap:
+                break;
             }
-            else
-            {
-                QMessageBox::warning(this, "Warning", "Duplicated Primary Key");
-                attributes.clear();
-                indexes.clear();
-                return false;
-            }
-            break;
-        }
-        case Types::KeyType::Unique:
-        {
-            QString indexName = "UK_" + relationName + "_" + attribName;
-            Types::IndexType idx = Types::IndexType::NonClusterIndex;
             Core::IndexProperties idxProp =
             {
-                .columns = {attribName},
-                .keyType = key,
-                .columnOrders = {Core::IndexProperties::ASC}
+                .isNonUnique = false,
+                .isNullable = false,
+                .isClustered = true,
+                .order = Types::ASC,
+                .ordinalPosition = nPrimaryKeys,
+                .comment = ""
             };
-            indexes.emplace_back(indexName, attribName, idx, idxProp);
+            indexes.emplace_back(indexName, attributeName, idx, idxProp);
             break;
         }
-        case Types::KeyType::Foreign:
-        case Types::KeyType::None:
+        case Types::KeyConstraintType::Unique:
+        {
+            QString indexName = "UK_" + relationName + "_" + attributeName;
+            Types::IndexType idx = Types::IndexType::BPlusTreeIndex; // temporal
+            Core::IndexProperties idxProp =
+            {
+                .isNonUnique = false,
+                .isNullable = isNullable,
+                .isClustered = false,
+                .order = Types::ASC,
+                .ordinalPosition = 0,
+                .comment = ""
+            };
+            indexes.emplace_back(indexName, attributeName, idx, idxProp);
             break;
         }
+        case Types::KeyConstraintType::Index:
+        {
+            QString indexName = "IX_" + relationName + "_" + attributeName;
+            Types::IndexType idx = Types::IndexType::BPlusTreeIndex; // temporal
+            Core::IndexProperties idxProp =
+            {
+                .isNonUnique = true,
+                .isNullable = isNullable,
+                .isClustered = false,
+                .order = Types::ASC,
+                .ordinalPosition = 0,
+                .comment = ""
+            };
+            indexes.emplace_back(indexName, attributeName, idx, idxProp);
+            break;
+        }
+        case Types::KeyConstraintType::Foreign:
+        case Types::KeyConstraintType::None:
+            break;
+        }
+
         // add null, auto-increment properties
-        attributes.emplace_back(attribName, type, length, null, autoIncrement);
+        attributes.emplace_back(attributeName, typeValue, typeCharLength.toLower(), length,
+                                defaultValue, isNullable, isUnsigned, ai, keyValue, commentValue);
     }
     return true;
 }
@@ -327,10 +378,10 @@ void NewRelation::error()
     ui->dataLabel->clear();
     ui->dataLabel->setText("Data:");
     // Remove success message
-    if (ui->horizontalLayout2->count() >= 3) {
-        QWidget *widgetToRemove = ui->horizontalLayout2->itemAt(2)->widget();
+    if (ui->groupBox->layout()->count() >= 4) {
+        QWidget *widgetToRemove = ui->groupBox->layout()->itemAt(3)->widget();
         if (widgetToRemove) {
-            ui->horizontalLayout2->removeWidget(widgetToRemove);
+            ui->groupBox->layout()->removeWidget(widgetToRemove);
             delete widgetToRemove;
         }
     }
@@ -345,10 +396,10 @@ void NewRelation::success(const QString &fileName, const QString& header)
     ui->dataLabel->clear();
     QFileInfo info(fileName);
     ui->dataLabel->setText("Data: <b>" + info.fileName() + "</b>");
-    if (ui->horizontalLayout2->count() < 3) {
+    if (ui->groupBox->layout()->count() < 4) {
         QLabel * label = new QLabel("Loaded Successfully", this);
         label->setStyleSheet("color: green; font-weight: bold;");
-        ui->horizontalLayout2->addWidget(label);
+        ui->groupBox->layout()->addWidget(label);
     }
     // update attributes table
     ui->tableWidget->clearContents();
@@ -357,7 +408,7 @@ void NewRelation::success(const QString &fileName, const QString& header)
     {
         i.replace('"', QString());
         this->addRow();
-        QLineEdit* attribName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(ui->tableWidget->rowCount(), 0));
+        QLineEdit* attribName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(ui->tableWidget->rowCount() - 1, 0));
         attribName->setText(i);
     }
 }

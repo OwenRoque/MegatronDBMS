@@ -18,6 +18,8 @@ DiskInit::DiskInit(QWidget *parent)
         this->accept();
     });
     connect(ui->sectorSpinBox, &QSpinBox::valueChanged, this, &DiskInit::setBlockMultiplier);
+    // default will be 4096b
+    ui->blockSizeComboBox->setCurrentIndex(3);
 }
 
 DiskInit::~DiskInit()

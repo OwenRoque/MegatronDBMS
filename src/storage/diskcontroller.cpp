@@ -24,6 +24,16 @@ int Storage::DiskController::getNCylinders() const
     return nCylinders;
 }
 
+int Storage::DiskController::getNHeads() const
+{
+    return nHeads;
+}
+
+int Storage::DiskController::getNSectors() const
+{
+    return nSectors;
+}
+
 void Storage::DiskController::moveArmTo(int c, int s)
 {
     arm.moveTo(c, s);

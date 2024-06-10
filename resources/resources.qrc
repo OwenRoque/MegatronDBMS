@@ -16,5 +16,7 @@
         <file>ico/down-arrow.ico</file>
         <file>ico/minus.ico</file>
         <file>ico/up-arrow.ico</file>
+        <file>ico/block.ico</file>
+        <file>ico/warning.ico</file>
     </qresource>
 </RCC>

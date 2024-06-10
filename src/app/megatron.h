@@ -26,7 +26,8 @@ class Megatron : public QMainWindow
 
 public:
     Megatron(QWidget *parent = nullptr, QString diskPath = QString(),
-             QSharedPointer<Storage::DiskController> control = nullptr);
+             QSharedPointer<Storage::DiskController> control = nullptr,
+             bool firstInit = false);
     ~Megatron();
 
 signals:

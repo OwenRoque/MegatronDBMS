@@ -14,7 +14,7 @@ namespace Core
     public:
         Database() = default;
         ~Database() = default;
-        Database(QSharedPointer<Storage::DiskController> dc, QString storageFile);
+        Database(QSharedPointer<Storage::DiskController> dc, QString storageFile, bool firstInit);
         Types::Return createRelation(Core::RelationInput response);
 
     private:

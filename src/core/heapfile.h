@@ -8,10 +8,10 @@ namespace Core
     class HeapFile : public File
     {
     public:
-        HeapFile(QSharedPointer<SystemCatalog> sc, QSharedPointer<DiskManager> dm);
-        void insertRecord() override;
-        void bulkInsertRecords() override;
-        void deleteRecord() override;
+        HeapFile() = default;
+        Types::Return insertRecord() override;
+        Types::Return bulkInsertRecords(const QString&) override;
+        Types::Return deleteRecord() override;
     };
 }
 

@@ -8,26 +8,31 @@
 
 namespace Core
 {
-    struct IndexProperties;
+    struct IndexProperties
+    {
+        bool isNonUnique;
+        bool isNullable;
+        bool isClustered;
+        Types::Order order;                // default ASC
+        quint8 ordinalPosition;
+        QString comment;
+    };
 
     struct RelationInput
     {
         QString relationName;
-        // attributeMeta
-        QList<std::tuple<QString, Types::DataType, int, bool, int>> attributes;
+        // attributeName, dataType, columnType, maxCharLen, defaultValue, nullable, unsigned, ai, constraint, comment
+        // missing attribute properties will be calculated internally, or are already included in this struct
+        QList<std::tuple<QString, Types::DataType, QString, quint16, QString, bool, bool,
+                         bool, Types::KeyConstraintType, QString>> attributes;
+        // indexName, attributeName, indexType, idxProperties
         QList<std::tuple<QString, QString, Types::IndexType, Core::IndexProperties>> indexes;
         Types::FileOrganization fileOrg;
         Types::RecordFormat recFormat;
+        Types::Charset charset;
         QString dataPath;
     };
 
-    struct IndexProperties
-    {
-        QStringList columns;                // single or composite
-        Types::KeyType keyType;
-        enum Order : quint8 { ASC, DESC };
-        QList<Order> columnOrders;          // default ASC
-    };
 }
 
 #endif // MEGATRON_STRUCTS_H

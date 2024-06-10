@@ -8,33 +8,26 @@
 #include <QTabWidget>
 #include <QInputDialog>
 
-Megatron::Megatron(QWidget *parent, QString diskPath,
-                   QSharedPointer<Storage::DiskController> control)
+Megatron::Megatron(QWidget *parent, QString diskPath, QSharedPointer<Storage::DiskController> control,
+                   bool firstInit)
     : QMainWindow(parent), ui(new Ui::Megatron)
 {
     ui->setupUi(this);
     QString storagePath(diskPath + "/" + "storage.bin");
-    database = Core::Database(control, storagePath);
+    database = Core::Database(control, storagePath, firstInit);
 
     tabWidget = ui->tabWidget;
     tabWidget->setMovable(true);
     tabWidget->setTabsClosable(true);
     tableTreeWidget = ui->treeWidget;
 
-    // controller->readBlock();
-    // controller->moveArmTo(0, 2);
-
     tabWidget->setVisible(false);
-    tableTreeWidget->setVisible(false);
-    // Load relations from schema in TreeWidget
-    Core::SystemCatalog *sysCat = &Core::SystemCatalog::getInstance();
-    if (sysCat->initSchema())
-    {
-        tableTreeWidget->setVisible(true);
-        loadTableTree();
-    }
-    else
-        ui->actionNewQuery->setEnabled(false);
+    tableTreeWidget->setVisible(true);
+    loadTableTree();
+
+    QWidget* spacer = new QWidget();
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    ui->toolBar->insertWidget(ui->actionExit, spacer);
 
     setCentralWidget(ui->centralwidget);
     // show OpenMessage default
@@ -48,7 +41,7 @@ Megatron::~Megatron()
     delete ui;
 }
 
-QWidget * Megatron::createOpenMessage(QWidget *parent)
+QWidget* Megatron::createOpenMessage(QWidget *parent)
 {
     // GridLayout
     QWidget *gridContainer = new QWidget(parent);
@@ -75,20 +68,11 @@ QWidget * Megatron::createOpenMessage(QWidget *parent)
             "-qt-list-indent: 1;\">"
                 "<li style="
                 "\" margin-top:12px; "
-                "margin-bottom:0px; "
+                "margin-bottom:12px; "
                 "margin-left:0px; "
                 "margin-right:0px; "
                 "-qt-block-indent:0; text-indent:0px;\">"
                 "Table &gt; New Table (Ctrl + N)"
-                "</li>"
-                "<li style="
-                "\" margin-top:0px; "
-                "margin-bottom:12px; "
-                "margin-left:0px; "
-                "margin-right:0px; "
-                "-qt-block-indent:0; "
-                "text-indent:0px;\">"
-                "Table &gt; Open Table (Ctrl + O)"
                 "</li>"
                 "<li style="
                 "\" margin-top:12px; "
@@ -106,7 +90,7 @@ QWidget * Megatron::createOpenMessage(QWidget *parent)
                 "margin-right:0px; "
                 "-qt-block-indent:0; "
                 "text-indent:0px;\">"
-                "Select a table from the left Tree"
+                "Select a Table from the Left Tree"
                 "</li>"
             "</ul>"
         "</body>"
@@ -153,10 +137,9 @@ void Megatron::handleOpenMessage(bool ret)
 void Megatron::loadTableTree()
 {
     tableTreeWidget->clear();
-    Core::SystemCatalog* sysCat = &Core::SystemCatalog::getInstance();
-    auto relations = sysCat->getRelations();
-    QList<QString> relationNames = relations.keys();
-    for (auto i = relationNames.cbegin(), end = relationNames.cend(); i != end; ++i) {
+    Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
+    auto relations = sc->listRelationKeys();
+    for (auto i = relations.begin(), end = relations.end(); i != end; ++i) {
         QTreeWidgetItem *item = new QTreeWidgetItem(tableTreeWidget);
         QFont font;
         font.setPointSize(11);

@@ -90,16 +90,16 @@ QString QueryForm::generateExecutionPlan()
 {
     QString plan;
     // some syntactic/semantic validations included
-    SystemCatalog *sysCat = &SystemCatalog::getInstance();
+    Core::SystemCatalog *sc = &Core::SystemCatalog::getInstance();
 
     QStringList attributes = attrInput->text().simplified().split(",");
     for (auto& i : attributes) i = i.trimmed(); // clean spaces
 
     // FROM: get table information
     QString tableName = tableInput->text().trimmed();
-    auto table = sysCat->find(tableName);
+    bool table = sc->relationExists(tableName);
     // If table not found in schema
-    if (table == sysCat->end()) {
+    if (!table) {
         warning(tr("Table: %1 not found in schema.").arg(tableName), this);
         return QString();
     }
@@ -320,224 +320,224 @@ void QueryForm::clear()
 
 bool QueryForm::exec(const QString &tableName)
 {
-    SystemCatalog *sysCat = &SystemCatalog::getInstance();
-    // sysCat->getDiskController()->readBlock();
-    QString path(sysCat->getDbDirPath() + "/" + tableName + ".txt");
-    QFile tableFile(path);
-    tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
-    QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
-    std::reverse(meta.begin(), meta.end());
+    // SystemCatalog *sysCat = &SystemCatalog::getInstance();
+    // // sysCat->getDiskController()->readBlock();
+    // QString path(sysCat->getDbDirPath() + "/" + tableName + ".txt");
+    // QFile tableFile(path);
+    // tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
+    // QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
+    // std::reverse(meta.begin(), meta.end());
 
-    // Show
-    QStringList headers;
-    for (const auto& a : meta) headers.append(a.attributeName);
-    tableWidget->setColumnCount(headers.size());
-    tableWidget->setHorizontalHeaderLabels(headers);
-    QTextStream in(&tableFile);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList dataList = line.split("#");
-        int row = tableWidget->rowCount();
-        tableWidget->insertRow(row);
-        for (int i = 0; i < dataList.size(); i++) {
-            QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
-            tableWidget->setItem(row, i, item);
-        }
-    }
-    // char c;
-    // std::string line;
-    // falta completar algoritmo
-    // while (std::getline(tableFile, line)) {
-    //     std::stringstream ss(line);
-    //     // get position pointers
-    //     int i = 0;
-    //     int *posValues = new int[headers.size()];
-    //     posValues[0] = 0; i++;
-    //     while (ss.get(c)) {
-    //         if (c == '#') {
-    //             posValues[i] = ss.tellg();
-    //             i++;
-    //         }
+    // // Show
+    // QStringList headers;
+    // for (const auto& a : meta) headers.append(a.attributeName);
+    // tableWidget->setColumnCount(headers.size());
+    // tableWidget->setHorizontalHeaderLabels(headers);
+    // QTextStream in(&tableFile);
+    // while (!in.atEnd()) {
+    //     QString line = in.readLine();
+    //     QStringList dataList = line.split("#");
+    //     int row = tableWidget->rowCount();
+    //     tableWidget->insertRow(row);
+    //     for (int i = 0; i < dataList.size(); i++) {
+    //         QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
+    //         tableWidget->setItem(row, i, item);
     //     }
-    //     ss.seekg(0, ss.beg);
-    //     for (int j = 0; j < headers.size(); ++j) {
-    //         cout <<
-    //     }
-    //     delete [] posValues;
     // }
-    tableFile.close();
+    // // char c;
+    // // std::string line;
+    // // falta completar algoritmo
+    // // while (std::getline(tableFile, line)) {
+    // //     std::stringstream ss(line);
+    // //     // get position pointers
+    // //     int i = 0;
+    // //     int *posValues = new int[headers.size()];
+    // //     posValues[0] = 0; i++;
+    // //     while (ss.get(c)) {
+    // //         if (c == '#') {
+    // //             posValues[i] = ss.tellg();
+    // //             i++;
+    // //         }
+    // //     }
+    // //     ss.seekg(0, ss.beg);
+    // //     for (int j = 0; j < headers.size(); ++j) {
+    // //         cout <<
+    // //     }
+    // //     delete [] posValues;
+    // // }
+    // tableFile.close();
     return true;
 }
 
 bool QueryForm::exec(const QString &newTableName, const QString &tableName)
 {
-    if (tableName == newTableName) {
-        warning(tr("Table: %1 already exists.").arg(tableName));
-        return false;
-    }
+    // if (tableName == newTableName) {
+    //     warning(tr("Table: %1 already exists.").arg(tableName));
+    //     return false;
+    // }
 
-    SystemCatalog *sysCat = &SystemCatalog::getInstance();
-    QString tablePath(sysCat->getDbDirPath() + "/" + tableName + ".txt");
-    QFile tableFile(tablePath);
-    tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
-    QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
-    std::reverse(meta.begin(), meta.end());
+    // SystemCatalog *sysCat = &SystemCatalog::getInstance();
+    // QString tablePath(sysCat->getDbDirPath() + "/" + tableName + ".txt");
+    // QFile tableFile(tablePath);
+    // tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
+    // QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
+    // std::reverse(meta.begin(), meta.end());
 
-    // Write schema
-    for (const auto& m : meta) {
-        sysCat->insertTableMetadata(newTableName, m);
-    }
-    sysCat->writeToSchema(newTableName);
+    // // Write schema
+    // for (const auto& m : meta) {
+    //     sysCat->insertTableMetadata(newTableName, m);
+    // }
+    // sysCat->writeToSchema(newTableName);
 
-    QString newTablePath(sysCat->getDbDirPath() + "/" + newTableName + ".txt");
-    QFile newTableToCreate(newTablePath);
-    newTableToCreate.open(QIODevice::WriteOnly | QIODevice::Text);
+    // QString newTablePath(sysCat->getDbDirPath() + "/" + newTableName + ".txt");
+    // QFile newTableToCreate(newTablePath);
+    // newTableToCreate.open(QIODevice::WriteOnly | QIODevice::Text);
 
-    QTextStream in(&tableFile);
-    QTextStream out(&newTableToCreate);
+    // QTextStream in(&tableFile);
+    // QTextStream out(&newTableToCreate);
 
-    QStringList headers;
-    for (const auto& a : meta) headers.append(a.attributeName);
-    tableWidget->setColumnCount(headers.size());
-    tableWidget->setHorizontalHeaderLabels(headers);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        out << line << "\n";
-        // Show
-        QStringList dataList = line.split("#");
-        int row = tableWidget->rowCount();
-        tableWidget->insertRow(row);
-        for (int i = 0; i < dataList.size(); i++) {
-            QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
-            tableWidget->setItem(row, i, item);
-        }
-    }
+    // QStringList headers;
+    // for (const auto& a : meta) headers.append(a.attributeName);
+    // tableWidget->setColumnCount(headers.size());
+    // tableWidget->setHorizontalHeaderLabels(headers);
+    // while (!in.atEnd()) {
+    //     QString line = in.readLine();
+    //     out << line << "\n";
+    //     // Show
+    //     QStringList dataList = line.split("#");
+    //     int row = tableWidget->rowCount();
+    //     tableWidget->insertRow(row);
+    //     for (int i = 0; i < dataList.size(); i++) {
+    //         QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
+    //         tableWidget->setItem(row, i, item);
+    //     }
+    // }
 
-    tableFile.close();
-    newTableToCreate.close();
+    // tableFile.close();
+    // newTableToCreate.close();
     return true;
 }
 
 bool QueryForm::exec(const QString &tableName, const QString &field,
                      int optor, const QString &condition)
 {
-    SystemCatalog *sysCat = &SystemCatalog::getInstance();
-    QString path(sysCat->getDbDirPath() + "/" + tableName + ".txt");
-    QFile tableFile(path);
-    tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
-    QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
-    std::reverse(meta.begin(), meta.end());
+    // SystemCatalog *sysCat = &SystemCatalog::getInstance();
+    // QString path(sysCat->getDbDirPath() + "/" + tableName + ".txt");
+    // QFile tableFile(path);
+    // tableFile.open(QIODevice::ReadOnly | QIODevice::Text);
+    // QList<SystemCatalog::attrMeta> meta = sysCat->values(tableName);
+    // std::reverse(meta.begin(), meta.end());
 
-    int fieldPosition = 0;
-    char fieldType = ' ';
-    for (const auto& f : meta) {
-        if (f.attributeName == field) {
-            fieldPosition = f.position;
-            fieldType = f.type;
-            break;
-        }
-    }
+    // int fieldPosition = 0;
+    // char fieldType = ' ';
+    // for (const auto& f : meta) {
+    //     if (f.attributeName == field) {
+    //         fieldPosition = f.position;
+    //         fieldType = f.type;
+    //         break;
+    //     }
+    // }
 
-    // Handle data type mismatch
-    if (optor == 0 || optor == 1 || optor == 4 || optor == 5) {
-        if (fieldType != 'i' || fieldType != 'f' || fieldType != 'd') {
-            warning("Incompatible data types, comparison is not possible.", this);
-            return false;
-        }
-    }
+    // // Handle data type mismatch
+    // if (optor == 0 || optor == 1 || optor == 4 || optor == 5) {
+    //     if (fieldType != 'i' || fieldType != 'f' || fieldType != 'd') {
+    //         warning("Incompatible data types, comparison is not possible.", this);
+    //         return false;
+    //     }
+    // }
 
-    // Show
-    QStringList headers;
-    for (const auto& a : meta) headers.append(a.attributeName);
-    tableWidget->setColumnCount(headers.size());
-    tableWidget->setHorizontalHeaderLabels(headers);
-    QTextStream in(&tableFile);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList dataList = line.split("#");
-        // Manage operator type
-        switch (optor) {
-        // toDouble casting manages all numeric types...
-        case 0: // <
-        {
-            if (dataList[fieldPosition].toDouble() < condition.toDouble())
-                break;
-            else continue;
-        }
-        case 1: // >
-        {
-            if (dataList[fieldPosition].toDouble() > condition.toDouble())
-                break;
-            else continue;
-        }
-        case 2: // isNotEqualTo
-        {
-            if (dataList[fieldPosition] != condition)
-                break;
-            else continue;
-        }
-        case 3: // isEqualTo
-        {
-            if (dataList[fieldPosition] == condition)
-                break;
-            else continue;
-        }
-        case 4: // <=
-        {
-            if (dataList[fieldPosition].toDouble() <= condition.toDouble())
-                break;
-            else continue;
-        }
-        case 5: // >=
-        {
-            if (dataList[fieldPosition].toDouble() >= condition.toDouble())
-                break;
-            else continue;
-        }
-        case 6: // Contains
-        {
-            if (dataList[fieldPosition].contains(condition))
-                break;
-            else continue;
-        }
-        case 7: // BeginsWith
-        {
-            if (dataList[fieldPosition].startsWith(condition))
-                break;
-            else continue;
-        }
-        case 8: // EndsWith
-        {
-            if (dataList[fieldPosition].endsWith(condition))
-                break;
-            else continue;
-        }
-        case 9: // DoesNotContain
-        {
-            if (!dataList[fieldPosition].contains(condition))
-                break;
-            else continue;
-        }
-        case 10: // DoesNotBeginWith
-        {
-            if (!dataList[fieldPosition].startsWith(condition))
-                break;
-            else continue;
-        }
-        case 11: // DoesNotEndWith
-        {
-            if (!dataList[fieldPosition].endsWith(condition))
-                break;
-            else continue;
-        }
-        }
-        int row = tableWidget->rowCount();
-        tableWidget->insertRow(row);
-        for (int i = 0; i < dataList.size(); i++) {
-            QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
-            tableWidget->setItem(row, i, item);
-        }
-    }
+    // // Show
+    // QStringList headers;
+    // for (const auto& a : meta) headers.append(a.attributeName);
+    // tableWidget->setColumnCount(headers.size());
+    // tableWidget->setHorizontalHeaderLabels(headers);
+    // QTextStream in(&tableFile);
+    // while (!in.atEnd()) {
+    //     QString line = in.readLine();
+    //     QStringList dataList = line.split("#");
+    //     // Manage operator type
+    //     switch (optor) {
+    //     // toDouble casting manages all numeric types...
+    //     case 0: // <
+    //     {
+    //         if (dataList[fieldPosition].toDouble() < condition.toDouble())
+    //             break;
+    //         else continue;
+    //     }
+    //     case 1: // >
+    //     {
+    //         if (dataList[fieldPosition].toDouble() > condition.toDouble())
+    //             break;
+    //         else continue;
+    //     }
+    //     case 2: // isNotEqualTo
+    //     {
+    //         if (dataList[fieldPosition] != condition)
+    //             break;
+    //         else continue;
+    //     }
+    //     case 3: // isEqualTo
+    //     {
+    //         if (dataList[fieldPosition] == condition)
+    //             break;
+    //         else continue;
+    //     }
+    //     case 4: // <=
+    //     {
+    //         if (dataList[fieldPosition].toDouble() <= condition.toDouble())
+    //             break;
+    //         else continue;
+    //     }
+    //     case 5: // >=
+    //     {
+    //         if (dataList[fieldPosition].toDouble() >= condition.toDouble())
+    //             break;
+    //         else continue;
+    //     }
+    //     case 6: // Contains
+    //     {
+    //         if (dataList[fieldPosition].contains(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     case 7: // BeginsWith
+    //     {
+    //         if (dataList[fieldPosition].startsWith(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     case 8: // EndsWith
+    //     {
+    //         if (dataList[fieldPosition].endsWith(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     case 9: // DoesNotContain
+    //     {
+    //         if (!dataList[fieldPosition].contains(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     case 10: // DoesNotBeginWith
+    //     {
+    //         if (!dataList[fieldPosition].startsWith(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     case 11: // DoesNotEndWith
+    //     {
+    //         if (!dataList[fieldPosition].endsWith(condition))
+    //             break;
+    //         else continue;
+    //     }
+    //     }
+    //     int row = tableWidget->rowCount();
+    //     tableWidget->insertRow(row);
+    //     for (int i = 0; i < dataList.size(); i++) {
+    //         QTableWidgetItem *item = new QTableWidgetItem(dataList[i]);
+    //         tableWidget->setItem(row, i, item);
+    //     }
+    // }
     return true;
 }
 

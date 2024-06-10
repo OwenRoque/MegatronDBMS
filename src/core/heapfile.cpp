@@ -1,23 +1,18 @@
 #include "heapfile.h"
 
-Core::HeapFile::HeapFile(QSharedPointer<SystemCatalog> sc, QSharedPointer<DiskManager> dm) :
-    Core::File(sc, dm)
+Types::Return Core::HeapFile::insertRecord()
 {
-
+    return Types::Return::Success;
 }
 
-void Core::HeapFile::insertRecord()
+Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
 {
-
+    // use ::getInstance();
+    return Types::Return::Success;
 }
 
-void Core::HeapFile::bulkInsertRecords()
+Types::Return Core::HeapFile::deleteRecord()
 {
-    // syscat->;
-}
-
-void Core::HeapFile::deleteRecord()
-{
-
+    return Types::Return::Success;
 }
 

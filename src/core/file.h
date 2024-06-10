@@ -1,8 +1,7 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include "diskmanager.h"
-#include "systemcatalog.h"
+#include "megatron_types.h"
 // #include "buffermanager.h"
 
 namespace Core
@@ -10,15 +9,16 @@ namespace Core
     class File
     {
     public:
-        File(QSharedPointer<SystemCatalog> sc, QSharedPointer<DiskManager> dm);
+        File() = default;
         virtual ~File() = default;
-        virtual void insertRecord() = 0;
-        virtual void bulkInsertRecords() = 0;
-        virtual void deleteRecord() = 0;
+        virtual Types::Return insertRecord() = 0;
+        virtual Types::Return bulkInsertRecords(const QString&) = 0;
+        virtual Types::Return deleteRecord() = 0;
 
     protected:
-        QSharedPointer<SystemCatalog> syscat;
-        QSharedPointer<DiskManager> dm;
+        // cluster index
+        // list of non-cluster indexes
+        // QList<>
 
     };
 }
