@@ -10,7 +10,7 @@ namespace Storage
     public:
         Platter() = default;
         ~Platter() = default;
-        Platter(const QString&, int, int, int, int, int);
+        Platter(const QString&, int, int, quint16, quint16, quint16);
         Platter(const QString&, int, int);
         QSharedPointer<Surface> getSurface(int);
         // utility interface

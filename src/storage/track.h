@@ -12,7 +12,7 @@ namespace Storage
     public:
         Track() = default;
         ~Track() = default;
-        Track(const QString&, int, int, int, int);
+        Track(const QString&, int, quint16, quint16, quint16);
         Track(const QString&, int);
         // utility interface
         Space getSpace() const override;

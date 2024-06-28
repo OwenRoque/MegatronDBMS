@@ -1,6 +1,6 @@
 #include "surface.h"
 
-Storage::Surface::Surface(const QString &name, int nTracks, int nSectors, int nCylinder, int nHead, int nSector)
+Storage::Surface::Surface(const QString &name, int nTracks, int nSectors, quint16 nCylinder, quint16 nHead, quint16 nSector)
 {
     createDirectory(name);
     for (int i = 0, nCylinderIndex = nCylinder; i < nTracks; i++, nCylinderIndex++)

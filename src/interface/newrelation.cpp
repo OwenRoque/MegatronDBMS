@@ -1,19 +1,24 @@
 ﻿#include "newrelation.h"
 #include "ui_newrelation.h"
 
+
 NewRelation::NewRelation(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::NewRelation)
 {
     ui->setupUi(this);
+    tableWidget = new AttributeTableWidget(this);
+    ui->verticalLayout_2->addWidget(tableWidget);
+
+    ui->orgComboBox->addItem("", QVariant());
     ui->orgComboBox->addItem("Heap", QVariant::fromValue(Types::FileOrganization::Heap));
-    ui->orgComboBox->addItem("Sequential/Sorted"/*, QVariant::fromValue(Types::FileOrganization::Sequential)*/);
-    ui->orgComboBox->addItem("Hash"/*, QVariant::fromValue(Types::FileOrganization::Hash)*/);
-    ui->orgComboBox->addItem("B+"/*, QVariant::fromValue(Types::FileOrganization::BPlusTree)*/);
+    ui->orgComboBox->addItem("Sequential/Sorted", QVariant::fromValue(Types::FileOrganization::Sequential));
+    ui->orgComboBox->addItem("Hash", QVariant::fromValue(Types::FileOrganization::Hash));
+    ui->orgComboBox->addItem("B+", QVariant::fromValue(Types::FileOrganization::BPlusTree));
 
     // TODO: enable more FOs when they are implemented
     auto* model = qobject_cast<QStandardItemModel*>(ui->orgComboBox->model());
-    for (int i = 1; i < 4; i++) {
+    for (int i = 2; i < 5; i++) {
         auto* item = model->item(i);
         item->setEnabled(false);
     }
@@ -22,22 +27,20 @@ NewRelation::NewRelation(QWidget *parent)
     ui->charsetComboBox->addItem("UTF-16 (Default)", QVariant::fromValue(Types::Charset::Utf16));
     ui->charsetComboBox->addItem("UTF-32" , QVariant::fromValue(Types::Charset::Utf32));
     ui->charsetComboBox->addItem("Latin1" , QVariant::fromValue(Types::Charset::Latin1));
+    ui->charsetComboBox->setCurrentIndex(1); // default
 
     connect(ui->dataToolButton, &QToolButton::clicked, this, &NewRelation::open);
-    connect(ui->groupBox, &QGroupBox::toggled, this, [=](bool toggled) {
-        if (!toggled)
-        {
-            dataPath.clear();
-            ui->tableWidget->clearContents();
-        }
+    connect(ui->groupBox, &QGroupBox::toggled, this, [=, this](bool toggled) {
+        if (toggled == false)
+            this->error();
     });
-    connect(ui->addButton, &QPushButton::clicked, this, &NewRelation::addRow);
-    connect(ui->removeButton, &QPushButton::clicked, this, &NewRelation::removeRow);
-    connect(ui->upButton, &QPushButton::clicked, this, &NewRelation::moveRowUp);
-    connect(ui->downButton, &QPushButton::clicked, this, &NewRelation::moveRowDown);
 
-    connect(ui->okButton, &QPushButton::clicked, this, [=]() { if (validate()) accept(); });
-    ui->okButton->setEnabled(false);
+    connect(ui->addButton, &QPushButton::clicked, tableWidget, [=, this]() { tableWidget->addRow(); });
+    connect(ui->removeButton, &QPushButton::clicked, tableWidget, &AttributeTableWidget::removeRow);
+
+    connect(ui->okButton, &QPushButton::clicked, this, [=, this]() {
+        if (this->validate()) accept();
+    });
 }
 
 NewRelation::~NewRelation()
@@ -58,111 +61,13 @@ Core::RelationInput NewRelation::getDataPackage() const
     return package;
 }
 
-void NewRelation::addRow()
-{
-    int newRow = ui->tableWidget->rowCount();
-    ui->tableWidget->insertRow(newRow);
-
-    QLineEdit *nameLineEdit = new QLineEdit(this);
-    nameLineEdit->setMaxLength(50);
-    ui->tableWidget->setCellWidget(newRow, 0, nameLineEdit);
-    ui->tableWidget->setColumnWidth(0, 200);
-
-    QComboBox *typeLineEdit = new QComboBox(this);
-    typeLineEdit->addItem("");
-    typeLineEdit->addItem("TINYINT", QVariant::fromValue(Types::DataType::TinyInt));
-    typeLineEdit->addItem("SMALLINT", QVariant::fromValue(Types::DataType::SmallInt));
-    typeLineEdit->addItem("INT", QVariant::fromValue(Types::DataType::Int));
-    typeLineEdit->addItem("BIGINT", QVariant::fromValue(Types::DataType::BigInt));
-    typeLineEdit->addItem("FLOAT", QVariant::fromValue(Types::DataType::Float));
-    typeLineEdit->addItem("DOUBLE", QVariant::fromValue(Types::DataType::Double));
-    typeLineEdit->addItem("BOOL", QVariant::fromValue(Types::DataType::Bool));
-    typeLineEdit->addItem("CHAR()", QVariant::fromValue(Types::DataType::Char));
-    typeLineEdit->addItem("VARCHAR()", QVariant::fromValue(Types::DataType::Varchar));
-    typeLineEdit->setEditable(true);
-    typeLineEdit->setInsertPolicy(QComboBox::NoInsert);
-    typeLineEdit->lineEdit()->setReadOnly(true);
-
-    connect(typeLineEdit, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [=](int index) {
-        QVariant userData = typeLineEdit->itemData(index);
-        Types::DataType type = static_cast<Types::DataType>(userData.toInt());
-
-        if (type == Types::Char || type == Types::Varchar) {
-            typeLineEdit->lineEdit()->setReadOnly(false);
-        } else {
-            typeLineEdit->lineEdit()->setReadOnly(true);
-        }
-        // qDebug() << "Selected Type:" << type;
-
-    });
-    ui->tableWidget->setCellWidget(newRow, 1, typeLineEdit);
-    ui->tableWidget->setColumnWidth(1, 150);
-
-    QComboBox *indexComboBox = new QComboBox(this);
-    indexComboBox->addItem("", Types::KeyConstraintType::None);
-    indexComboBox->addItem("PRIMARY", Types::KeyConstraintType::Primary);
-    indexComboBox->addItem("UNIQUE", Types::KeyConstraintType::Unique);
-    indexComboBox->addItem("INDEX", Types::KeyConstraintType::Index);
-    ui->tableWidget->setCellWidget(newRow, 2, indexComboBox);
-    ui->tableWidget->setColumnWidth(2, 125);
-
-    QLineEdit *defaultLineEdit = new QLineEdit(this);
-    ui->tableWidget->setCellWidget(newRow, 3, defaultLineEdit);
-    ui->tableWidget->setColumnWidth(3, 125);
-
-    QCheckBox *unsignedCheckBox = new QCheckBox(this);
-    ui->tableWidget->setCellWidget(newRow, 4, unsignedCheckBox);
-    ui->tableWidget->setColumnWidth(4, 80);
-
-    QCheckBox *nullCheckBox = new QCheckBox(this);
-    ui->tableWidget->setCellWidget(newRow, 5, nullCheckBox);
-    ui->tableWidget->setColumnWidth(5, 80);
-
-    QCheckBox *aiCheckBox = new QCheckBox(this);
-    ui->tableWidget->setCellWidget(newRow, 6, aiCheckBox);
-    ui->tableWidget->setColumnWidth(6, 80);
-
-    QLineEdit *commentLineEdit = new QLineEdit(this);
-    ui->tableWidget->setCellWidget(newRow, 7, commentLineEdit);
-    nameLineEdit->setMaxLength(255);
-    ui->tableWidget->setColumnWidth(7, 100);
-
-    ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
-}
-
-void NewRelation::removeRow()
-{
-    int currentRow = ui->tableWidget->currentRow();
-    if (currentRow >= 0) {
-        ui->tableWidget->removeRow(currentRow);
-    }
-}
-
-void NewRelation::moveRowUp()
-{
-    int currentRow = ui->tableWidget->currentRow();
-    if (currentRow > 0) {
-        swapRows(currentRow, currentRow - 1);
-        ui->tableWidget->selectRow(currentRow - 1);
-    }
-}
-
-void NewRelation::moveRowDown()
-{
-    int currentRow = ui->tableWidget->currentRow();
-    if (currentRow < ui->tableWidget->rowCount() - 1) {
-        swapRows(currentRow, currentRow + 1);
-        ui->tableWidget->selectRow(currentRow + 1);
-    }
-}
-
 bool NewRelation::loadFile(const QString &fileName)
 {
     QFile file(fileName);
     if (!fileName.endsWith(".txt", Qt::CaseInsensitive) && !fileName.endsWith(".csv", Qt::CaseInsensitive))
     {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Invalid file format. Please select a .txt or .csv file."));
+                                 tr("Invalid file format. \nPlease select a .txt or .csv file."));
         error();
         return false;
     }
@@ -178,8 +83,10 @@ bool NewRelation::loadFile(const QString &fileName)
     QString header;
     in.readLineInto(&header);
     file.close();
+    QStringList attributeList = header.split(",");
+    for (auto& a: attributeList) a.replace('"', QString());
     // Save in the corresponding variable (dataPath, schemaPath)
-    success(fileName, header);
+    success(fileName, attributeList);
     setWindowFilePath(fileName);
     return true;
 }
@@ -215,7 +122,7 @@ bool NewRelation::validate()
         QMessageBox::warning(this, "Warning", "Relation Name field is empty.");
         return false;
     }
-    else if (ui->tableWidget->rowCount() == 0)
+    else if (tableWidget->rowCount() == 0)
     {
         QMessageBox::warning(this, "Warning", "There must be at least one attribute row for the relation.");
         return false;
@@ -227,148 +134,239 @@ bool NewRelation::validate()
     else recFormat = Types::RecordFormat::Variable;
     charset = ui->charsetComboBox->currentData().value<Types::Charset>();
 
-    // Create GUI for index creation (PRIMARY, UNIQUE, INDEX)
-    quint8 nPrimaryKeys = 0;
-    for (int row = 0; row < ui->tableWidget->rowCount(); ++row)
+    /// Attribute Validation
+    auto attributeValues = tableWidget->tableAttributes();
+    bool aiHasBeenSet = false;
+    QSet<QString> filterDuplicateAttributes;
+    for (const auto& i : attributeValues)
     {
-        QString attributeName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 0))->text().simplified();
-        Types::DataType typeValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentData().value<Types::DataType>();
-        QString typeCharLength = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 1))->currentText().simplified();
-        Types::KeyConstraintType keyValue = qobject_cast<QComboBox*>(ui->tableWidget->cellWidget(row, 2))->currentData().value<Types::KeyConstraintType>();
-        QString defaultValue = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 3))->text().simplified();
-        bool isUnsigned = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 4))->isChecked();
-        bool isNullable = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 5))->isChecked();
-        bool ai = qobject_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 6))->isChecked();
-        QString commentValue = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(row, 7))->text().simplified();
-
-        // empty row
-        if (attributeName.isEmpty())
-        {
-            QMessageBox::warning(this, "Warning", "Row " + QString::number(row) + " has no attribute name.");
+        QString attrNameValue = std::get<0>(i).simplified();
+        if (filterDuplicateAttributes.find(attrNameValue) == filterDuplicateAttributes.end())
+            filterDuplicateAttributes.insert(attrNameValue);
+        else {
+            QMessageBox::warning(this, "Warning",  tr("Duplicate attribute found: \n"
+                                                     "\t\"%1\"").arg(attrNameValue));
             attributes.clear();
             indexes.clear();
             return false;
         }
 
-        // valid type
-        quint16 length = 0;
-        static QRegularExpression charRegex("^CHAR\\((\\d+)\\)$");
-        static QRegularExpression varcharRegex("^VARCHAR\\((\\d+)\\)$");
-        QRegularExpressionMatch match;
+        Types::DataType typeValue = std::get<1>(i);
+        QString columnValue = std::get<2>(i).simplified();
+        Types::KeyConstraintType keyValue = std::get<3>(i);
+        QString defaultValue = std::get<4>(i).simplified();
+        bool unsignedValue = std::get<5>(i);
+        bool nullableValue = std::get<6>(i);
+        bool aiValue = std::get<7>(i);
+        QString commentValue = std::get<8>(i).simplified();
 
-        if (typeValue == Types::Char && (match = charRegex.match(typeCharLength)).hasMatch())
-        {
-            length = match.captured(1).toUShort();
+        if (attrNameValue.isEmpty()){
+            QMessageBox::warning(this, "Warning",  "Empty attribute name field found.");
+            attributes.clear();
+            indexes.clear();
+            return false;
         }
-        else if (typeValue == Types::Varchar && (match = varcharRegex.match(typeCharLength)).hasMatch())
-        {
-            if (recFormat == Types::RecordFormat::Fixed)
-            {
-                QMessageBox::warning(this, "Warning",
-                    tr("Fixed-Length Record Format does not support VARCHAR datatypes. "
-                        "Use a Variable-Length Record Format or change your VARCHAR field to CHAR (Declared in: %1)").arg(attributeName));
+
+        if (typeValue == Types::Varchar && recFormat == Types::RecordFormat::Fixed) {
+            QMessageBox::warning(this, "Warning",
+                tr("Fixed-Length Record Format does not support VARCHAR datatypes. \n"
+                "Use a Variable-Length Record Format or change your VARCHAR field to CHAR (Declared in: \"%1\")")
+                .arg(attrNameValue));
+            attributes.clear();
+            indexes.clear();
+            return false;
+        }
+
+        quint16 maxCharLength = 0;
+        if (typeValue == Types::Char || typeValue == Types::Varchar)
+            maxCharLength = columnValue.toUShort();
+
+        // handle columnType storage format
+        switch (typeValue) {
+        case Types::TinyInt:
+        case Types::UTinyInt:
+            columnValue = "tinyint";
+            break;
+        case Types::SmallInt:
+        case Types::USmallInt:
+            columnValue = "smallint";
+            break;
+        case Types::Int:
+        case Types::UInt:
+            columnValue = "int";
+            break;
+        case Types::BigInt:
+        case Types::UBigInt:
+            columnValue = "bigint";
+            break;
+        case Types::Float:
+            columnValue = "float";
+            break;
+        case Types::Double:
+            columnValue = "double";
+            break;
+        case Types::Bool:
+            columnValue = "bool";
+            break;
+        case Types::Enum:
+            columnValue = "enum(" + columnValue + ")";
+            break;
+        case Types::Char:
+            columnValue = "char(" + columnValue + ")";
+            break;
+        case Types::Varchar:
+            columnValue = "varchar(" + columnValue + ")";
+            break;
+        }
+
+        // determine whether unsigned, nullable or ai states are valid according to dataType, keyConstraint
+        if (typeValue == Types::DataType::Bool ||
+            typeValue == Types::DataType::Enum ||
+            typeValue == Types::DataType::Char ||
+            typeValue == Types::DataType::Varchar) {
+            unsignedValue = false;
+            aiValue = false;
+
+        }
+        if (keyValue == Types::KeyConstraintType::Primary)
+            nullableValue = false;
+        if (keyValue != Types::KeyConstraintType::Primary &&
+            keyValue != Types::KeyConstraintType::Unique)
+            aiValue = false;
+
+        if (aiValue) {
+            if (!aiHasBeenSet)
+                aiHasBeenSet = true;
+            else {
+                QMessageBox::warning(this, "Warning",  "Duplicated auto-increment.");
                 attributes.clear();
                 indexes.clear();
                 return false;
             }
-            length = match.captured(1).toUShort();
-        }
-        else
-        {
-            QMessageBox::warning(this, "Warning", tr("Incorrect syntax: %1 in row %2").arg(typeCharLength).arg(row));
-            attributes.clear();
-            indexes.clear();
-            return false;
         }
 
-        // Create indexes according to defined keys
-        switch (keyValue) {
-        case Types::KeyConstraintType::Primary:
+        attributes.emplaceBack(attrNameValue, typeValue, columnValue, maxCharLength, defaultValue,
+                               nullableValue, unsignedValue, aiValue, keyValue, commentValue);
+    }
+
+    /// Index Validation
+    auto indexValues = tableWidget->tableIndexes();
+    for (const auto& i : indexValues)
+    {
+        QString attrNameValue;
+        QString indexNameValue;
+        Types::KeyConstraintType keyTypeValue;
+        Types::IndexType indexTypeValue;
+        QString commentValue;
+        std::tie(attrNameValue, indexNameValue, keyTypeValue, indexTypeValue, commentValue) = i;
+
+        // default configuration properties (PRIMARY)
+        Core::IndexProperties idxProp =
         {
-            QString indexName = "PK_" + relationName + "_" + attributeName;
-            Types::IndexType idx;
-            switch (fileOrg) {
-            case Types::FileOrganization::Sequential:
-                idx = Types::IndexType::SequentialIndex;
-                break;
-            case Types::FileOrganization::Hash:
-                idx = Types::IndexType::HashIndex;
-                break;
-            case Types::FileOrganization::BPlusTree:
-                idx = Types::IndexType::BPlusTreeIndex;
-                break;
-                // This case won't ever happen
-            case Types::FileOrganization::Heap:
+            .isNonUnique = false,
+            .isNullable = false,
+            .isClustered = true,
+            .order = Types::ASC,
+            .ordinalPosition = 1,
+            .comment = commentValue
+        };
+
+        if (fileOrg == Types::FileOrganization::Heap &&
+            keyTypeValue == Types::KeyConstraintType::Primary)
+        {
+            int ret = QMessageBox::information(this, "Information", tr("Heap File Organization do not implement any kind of data sorting "
+                "physically on disk via indexes. The Primary Key defined on: \n"
+                    "\t\"%1\" \n"
+                    "will become a non-clustered index. \n"
+                    "Do you want to proceed?").arg(attrNameValue), QMessageBox::Ok | QMessageBox::Cancel);
+            switch (ret) {
+            case QMessageBox::Ok:
+            {
+                idxProp.isClustered = false;
                 break;
             }
-            Core::IndexProperties idxProp =
+            case QMessageBox::Cancel:
             {
-                .isNonUnique = false,
-                .isNullable = false,
-                .isClustered = true,
-                .order = Types::ASC,
-                .ordinalPosition = nPrimaryKeys,
-                .comment = ""
-            };
-            indexes.emplace_back(indexName, attributeName, idx, idxProp);
-            break;
-        }
-        case Types::KeyConstraintType::Unique:
-        {
-            QString indexName = "UK_" + relationName + "_" + attributeName;
-            Types::IndexType idx = Types::IndexType::BPlusTreeIndex; // temporal
-            Core::IndexProperties idxProp =
-            {
-                .isNonUnique = false,
-                .isNullable = isNullable,
-                .isClustered = false,
-                .order = Types::ASC,
-                .ordinalPosition = 0,
-                .comment = ""
-            };
-            indexes.emplace_back(indexName, attributeName, idx, idxProp);
-            break;
-        }
-        case Types::KeyConstraintType::Index:
-        {
-            QString indexName = "IX_" + relationName + "_" + attributeName;
-            Types::IndexType idx = Types::IndexType::BPlusTreeIndex; // temporal
-            Core::IndexProperties idxProp =
-            {
-                .isNonUnique = true,
-                .isNullable = isNullable,
-                .isClustered = false,
-                .order = Types::ASC,
-                .ordinalPosition = 0,
-                .comment = ""
-            };
-            indexes.emplace_back(indexName, attributeName, idx, idxProp);
-            break;
-        }
-        case Types::KeyConstraintType::Foreign:
-        case Types::KeyConstraintType::None:
-            break;
+                attributes.clear();
+                indexes.clear();
+                return false;
+            }
+            }
         }
 
-        // add null, auto-increment properties
-        attributes.emplace_back(attributeName, typeValue, typeCharLength.toLower(), length,
-                                defaultValue, isNullable, isUnsigned, ai, keyValue, commentValue);
+        // validate that file organization and index types match
+        if (keyTypeValue == Types::KeyConstraintType::Primary) {
+            switch (indexTypeValue) {
+            case Types::SequentialIndex:
+            {
+                if (fileOrg != Types::FileOrganization::Sequential)
+                {
+                    QMessageBox::warning(this, "Warning",  "Sequential File Organization needs to match with Index Type.");
+                    attributes.clear();
+                    indexes.clear();
+                    return false;
+                }
+            }
+            case Types::HashIndex:
+            {
+                if (fileOrg != Types::FileOrganization::Hash)
+                {
+                    QMessageBox::warning(this, "Warning",  "Hash File Organization needs to match with Index Type.");
+                    attributes.clear();
+                    indexes.clear();
+                    return false;
+                }
+            }
+            case Types::BPlusTreeIndex:
+            {
+                if (fileOrg != Types::FileOrganization::BPlusTree)
+                {
+                    QMessageBox::warning(this, "Warning",  "B+Tree File Organization needs to match with Index Type.");
+                    attributes.clear();
+                    indexes.clear();
+                    return false;
+                }
+            }
+            }
+
+            // preparing index properties according to keyConstraint
+            switch(keyTypeValue) {
+            case Types::Primary:
+            {
+                // nothing to adjust, default template is Primary
+                break;
+            }
+            case Types::Unique:
+            {
+                const auto attribute = std::find_if(attributes.cbegin(), attributes.cend(), [&attrNameValue](const auto& tuple) {
+                    QString attrName = std::get<0>(tuple);
+                    return attrName == attrNameValue;
+                });
+                idxProp.isClustered = false;
+                idxProp.isNonUnique = false;
+                idxProp.isNullable = std::get<5>(*attribute);       // null attribute state
+                break;
+            }
+            case Types::Index:
+            {
+                const auto attribute = std::find_if(attributes.cbegin(), attributes.cend(), [&attrNameValue](const auto& tuple) {
+                    QString attrName = std::get<0>(tuple);
+                    return attrName == attrNameValue;
+                });
+                idxProp.isClustered = false;
+                idxProp.isNonUnique = true;
+                idxProp.isNullable = std::get<5>(*attribute);       // null attribute state
+                break;
+            }
+            case Types::Foreign:
+            case Types::None:
+                break;
+            }
+        }
+
+        indexes.emplaceBack(indexNameValue, attrNameValue, indexTypeValue, idxProp);
     }
     return true;
-}
-
-void NewRelation::swapRows(int row1, int row2)
-{
-    for (int col = 0; col < ui->tableWidget->columnCount(); ++col) {
-        QWidget *widget1 = ui->tableWidget->cellWidget(row1, col);
-        QWidget *widget2 = ui->tableWidget->cellWidget(row2, col);
-
-        ui->tableWidget->removeCellWidget(row1, col);
-        ui->tableWidget->removeCellWidget(row2, col);
-
-        if (widget1) ui->tableWidget->setCellWidget(row2, col, widget1);
-        if (widget2) ui->tableWidget->setCellWidget(row1, col, widget2);
-    }
 }
 
 void NewRelation::error()
@@ -386,12 +384,11 @@ void NewRelation::error()
         }
     }
     // update attributes table
-    ui->tableWidget->clearContents();
+    tableWidget->clearContents();
 }
 
-void NewRelation::success(const QString &fileName, const QString& header)
+void NewRelation::success(const QString &fileName, const QStringList& attributeList)
 {
-    // qDebug() << ui->horizontalLayout2->count() << " " << ui->horizontalLayout->count();
     dataPath = fileName;
     ui->dataLabel->clear();
     QFileInfo info(fileName);
@@ -402,13 +399,9 @@ void NewRelation::success(const QString &fileName, const QString& header)
         ui->groupBox->layout()->addWidget(label);
     }
     // update attributes table
-    ui->tableWidget->clearContents();
-    QStringList attrNames = header.split(",");
-    for (auto& i : attrNames)
+    tableWidget->clearContents();
+    for (qsizetype i = 0; i < attributeList.size(); ++i)
     {
-        i.replace('"', QString());
-        this->addRow();
-        QLineEdit* attribName = qobject_cast<QLineEdit*>(ui->tableWidget->cellWidget(ui->tableWidget->rowCount() - 1, 0));
-        attribName->setText(i);
+        tableWidget->addRow(attributeList.at(i));
     }
 }

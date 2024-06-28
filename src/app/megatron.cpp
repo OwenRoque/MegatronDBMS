@@ -14,7 +14,8 @@ Megatron::Megatron(QWidget *parent, QString diskPath, QSharedPointer<Storage::Di
 {
     ui->setupUi(this);
     QString storagePath(diskPath + "/" + "storage.bin");
-    database = Core::Database(control, storagePath, firstInit);
+    QString catalogPath(diskPath + "/" + "catalog.bin");
+    database = Core::Database(control, storagePath, catalogPath, firstInit);
 
     tabWidget = ui->tabWidget;
     tabWidget->setMovable(true);
@@ -23,7 +24,7 @@ Megatron::Megatron(QWidget *parent, QString diskPath, QSharedPointer<Storage::Di
 
     tabWidget->setVisible(false);
     tableTreeWidget->setVisible(true);
-    loadTableTree();
+    this->loadTableTree();
 
     QWidget* spacer = new QWidget();
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -160,23 +161,26 @@ void Megatron::createTable()
         {
         case Types::Return::Success:
         {
-            statusBar()->showMessage(tr("Loaded Relation: %1 successfully.").arg(response.relationName));
+            statusBar()->showMessage(tr("Loaded Relation: \"%1\" successfully.").arg(response.relationName));
             // add new relationForm Widget to tree
             if (!tableTreeWidget->isVisible()) tableTreeWidget->setVisible(true);
             ui->actionNewQuery->setEnabled(true);
             loadTableTree();
+            return;
         }
         case Types::Return::DuplicateError:
         {
-            QMessageBox::warning(this, "Error", tr("Relation: %1 already exists. "
+            QMessageBox::warning(this, "Error", tr("Relation: \n"
+                                                   "\t\"%1\" \n"
+                                                   "already exists. \n"
                                                    "Change the name of the relation and try again.").arg(response.relationName));
             return;
         }
         case Types::Return::OpenError:
-            QMessageBox::warning(this, "Error", tr("Data File: %1 could not be opened.").arg(response.dataPath));
+            QMessageBox::warning(this, "Error", tr("Data File: \"%1\" could not be opened.").arg(response.dataPath));
             return;
         case Types::Return::ParseError:
-            QMessageBox::warning(this, "Error", tr("Data File: %1 could not be parsed correctly.").arg(response.dataPath));
+            QMessageBox::warning(this, "Error", tr("Data File: \"%1\" could not be parsed correctly.").arg(response.dataPath));
             return;
         }
     }

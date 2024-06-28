@@ -43,6 +43,18 @@ Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, 
         .fileNodeIdCounter = 1,
         .fileGroupIdCounter = 1
     };
+
+    // Store default values at startup on disk (.bin file)
+    QFile file(storageFile);
+    if (file.open(QIODevice::WriteOnly))
+    {
+        QDataStream out(&file);
+        out << sib;
+        out << cylinderGroups;
+        out << currCylinderPos;
+        out << fileGroups;
+        file.close();
+    }
 }
 
 QSharedPointer<Storage::Block> Core::DiskManager::readBlock(int blockAddress, QByteArray &buffer)
@@ -114,93 +126,64 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
     int nDataBlocks = qCeil(fileSize / Storage::blockSize) + autoGrowthFactor;
     node.size = nDataBlocks * Storage::blockSize;
     QList<int> blockAddresses(nDataBlocks, -1);
-    for (qsizetype i = 0; i < cylinderGroups.size(); ++i)
+
+    int blocksNeeded = nDataBlocks;
+    int startCylinderPos = currCylinderPos;
+
+    while (blocksNeeded > 0)
     {
         CylinderGroup current = cylinderGroups.at(currCylinderPos);
-        int nFreeBlocks = current.blockMap.count(true);
-        if (nDataBlocks > nFreeBlocks)
-        {
-            qDebug() << "Not possible to allocate FileNode in this cylinder";
-            currCylinderPos = (currCylinderPos + 1) % cylinderGroups.size();
-            continue;
-        }
         if (current.fragmentation <= 0.95f)
+        // Allocating blocks as long as the current cylinder has space left (only if fragmentation level isn't too high)
+        // if they're not enough, the rest will be allocated in next cylinder
         {
-            QList<QPair<int, int>> groups = findFreeGroups(current.blockMap);
-            // modify condition: choose left-most BIGGEST group where block can fit in!!!
-            // assuming that after creation of Relation X user will proceed to fill
-            // so when that X increases in size, blocks allocated will be contiguous
             // <offset, length>
+            QList<QPair<int, int>> groups = findFreeGroups(current.blockMap);
             for (const auto& group : groups)
             {
-                if (group.second >= nDataBlocks)
+                int blocksToAllocate = std::min(blocksNeeded, group.second);
+
+                for (int i = 0; i < blocksToAllocate; ++i)
                 {
-                    for (int i = group.first; i < group.first + group.second; ++i)
-                    {
-                        // convert relative block number to absolute (LBA number)
-                        int blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + i;
-                        blockAddresses.append(blockAddress);
-                        // update blockMap
-                        current.blockMap.setBit(i, 0);
-                    }
-                    // recalculate cylinder fragmentation
-                    current.fragmentation = fragmentationLevel(current.blockMap);
-                    node.blocks = blockAddresses;
-                    node.id = sib.fileNodeIdCounter;
-                    // update global counters
-                    sib.fileNodeIdCounter++;
-                    sib.numFileNodes++;
-                    current.superBlock.numFileNodes++;
-                    return node;
+                    // convert relative block number to absolute (LBA number)
+                    int blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + (group.first + i);
+                    // add to blockArray
+                    blockAddresses.append(blockAddress);
+                    // update blockmap
+                    current.blockMap.setBit(group.first + i, 0);
                 }
-            }
-            // if it doesn't fit in any group, merge smaller groups into one of the desired size
-            // from left to right
-            int currentBlocks = 0;
-            for (const auto& group : groups)
-            {
-                if (currentBlocks + group.second <= nDataBlocks)
-                {
-                    for (int i = 0; i < group.second; ++i)
-                    {
-                        // convert relative block number to absolute (LBA number)
-                        int blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + (group.first + i);
-                        blockAddresses.append(blockAddress);
-                        // update blockMap
-                        current.blockMap.setBit(group.first + i, 0);
-                    }
-                    currentBlocks += group.second;
-                }
-                else
-                {
-                    for (int i = 0; i < nDataBlocks - currentBlocks; ++i)
-                    {
-                        int blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + (group.first + i);
-                        blockAddresses.append(blockAddress);
-                        // update blockMap
-                        current.blockMap.setBit(group.first + i, 0);
-                    }
-                    // recalculate cylinder fragmentation
-                    current.fragmentation = fragmentationLevel(current.blockMap);
-                    node.blocks = blockAddresses;
-                    node.id = sib.fileNodeIdCounter;
-                    // update global counters
-                    sib.fileNodeIdCounter++;
-                    sib.numFileNodes++;
-                    current.superBlock.numFileNodes++;
-                    return node;
-                }
+
+                blocksNeeded -= blocksToAllocate;
+
+                if (blocksNeeded == 0)
+                    break;
             }
         }
-        else
+        // move to next cylinder when:
+        // - current cylinder has a high fragmentation level
+        // - current cylinder has no more free space, but there are still more blocks left to allocate
+        currCylinderPos = (currCylinderPos + 1) % cylinderGroups.size();
+        // if no cylinder had fragmentation level lower than .95
+        if (currCylinderPos == startCylinderPos)
         {
-            qDebug() << "Fragmentation level in cylinder " + QString::number(currCylinderPos) + " is too high.";
-            currCylinderPos = (currCylinderPos + 1) % cylinderGroups.size();
-            continue;
+            qDebug() << "FileNode not allocated. There's no space left on disk.";
+            node.blocks = blockAddresses;
+            return node;
         }
     }
-    qDebug() << "FileNode not allocated. There's no space left on disk.";
+    // success case
+    // Update fragmentation levels
+    for (qsizetype i = 0; i < cylinderGroups.size(); ++i)
+    {
+        CylinderGroup& current = cylinderGroups[i];
+        current.fragmentation = fragmentationLevel(current.blockMap);
+    }
+    // update global counters
     node.blocks = blockAddresses;
+    node.id = sib.fileNodeIdCounter;
+    sib.fileNodeIdCounter++;
+    sib.numFileNodes++;
+
     return node;
 }
 
@@ -266,7 +249,7 @@ float Core::DiskManager::fragmentationLevel(const QBitArray& bm)
     // free - freemax / free
     // where: free     = total number of free blocks
     //        freemax  = size of largest free block
-    float fragment = (free - freeMax)/free;
+    float fragment = (free - freeMax)/(float)free;
     // round to 3 decimals
     return std::round(fragment * 1000.0) / 1000.0;
 }
@@ -394,29 +377,34 @@ QList<QPair<int, int>> Core::DiskManager::findFreeGroups(const QBitArray &bm)
 bool Core::DiskManager::saveToDisk()
 {
     QFile file(storageFile);
-    if (!file.open(QIODevice::WriteOnly))
-        return false;
-    QDataStream out(&file);
-    out << sib;
-    out << cylinderGroups;
-    out << currCylinderPos;
-    out << fileGroups;
-    file.close();
-    return true;
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        QDataStream out(&file);
+        out << sib;
+        out << cylinderGroups;
+        out << currCylinderPos;
+        out << fileGroups;
+        file.close();
+        return true;
+    }
+    return false;
 }
 
 bool Core::DiskManager::readFromDisk()
 {
     QFile file(storageFile);
-    if (!file.open(QIODevice::ReadOnly))
-        return false;
-    // Clear current default values
-    cylinderGroups.clear();
-    QDataStream in(&file);
-    in >> sib;
-    in >> cylinderGroups;
-    in >> currCylinderPos;
-    in >> fileGroups;
-    file.close();
-    return true;
+    if (file.open(QIODevice::ReadOnly))
+    {
+        // Clear current default values
+        cylinderGroups.clear();
+        fileGroups.clear();
+        QDataStream in(&file);
+        in >> sib;
+        in >> cylinderGroups;
+        in >> currCylinderPos;
+        in >> fileGroups;
+        file.close();
+        return true;
+    }
+    return false;
 }

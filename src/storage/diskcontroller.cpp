@@ -52,7 +52,9 @@ void Storage::DiskController::moveArmTo(int c, int s)
 
 void Storage::DiskController::readBlock(int block, QByteArray& buffer)
 {
-    buffer.resize(blockSize);
+    // IMPORTANT: resize byte array to desired size
+    buffer.resize(blockSize, '\0');
+
     // Calculate logic sectors of block (call readSecLog)
     for (int i = 0; i < blockFactor; i++, block++)
     {
@@ -78,14 +80,18 @@ void Storage::DiskController::readSector(int c, int h, int s, char* buffer)
     if (sector.open(QIODevice::ReadOnly))
     {
         QDataStream stream(&sector);
-        // Ignore header (16 bytes)
+        // Ignore sector header (16 bytes)
         stream.skipRawData(16);
-        QByteArray data = sector.read(sectorSize);
+        // IMPORTANT: data should not have less size than 'len' arg.
+        QByteArray data(Storage::sectorSize, '\0');
+        int bytesRead = stream.readRawData(data.data(), Storage::sectorSize);
+        qDebug() << "Bytes leidos del sector: " << bytesRead;
         std::memcpy(buffer, data.constData(), sectorSize);
         sector.close();
     }
 }
 
+// make sure data has size of blockFactor * sectorSize, for this to work
 void Storage::DiskController::writeBlock(int block, const QByteArray& data)
 {
     // Calculate logic sectors of block (call writeSecLog)
@@ -120,11 +126,12 @@ void Storage::DiskController::writeSector(int c, int h, int s, const char* data,
         stream << std::get<0>(chs) << std::get<1>(chs) << std::get<2>(chs) << dataSize;
         stream.writeRawData(data, dataSize);
 
-        int remainingSize = sectorSize - dataSize;
-        if (remainingSize > 0) {
-            QByteArray padding(remainingSize, '\0');
-            stream.writeRawData(padding.constData(), remainingSize);
-        }
+        // unnecessary since data must not have remaining bytes
+        // int remainingSize = sectorSize - dataSize;
+        // if (remainingSize > 0) {
+        //     QByteArray padding(remainingSize, '\0');
+        //     stream.writeRawData(padding.constData(), remainingSize);
+        // }
         sector.close();
     }
 }

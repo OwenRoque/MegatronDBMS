@@ -25,7 +25,7 @@
   <property name="maximumSize">
    <size>
     <width>1080</width>
-    <height>550</height>
+    <height>850</height>
    </size>
   </property>
   <property name="font">
@@ -88,6 +88,9 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Expanding</enum>
+          </property>
           <property name="sizeHint" stdset="0">
            <size>
             <width>40</width>
@@ -98,9 +101,15 @@
         </item>
         <item>
          <widget class="QToolButton" name="dataToolButton">
+          <property name="minimumSize">
+           <size>
+            <width>65</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="maximumSize">
            <size>
-            <width>40</width>
+            <width>75</width>
             <height>16777215</height>
            </size>
           </property>
@@ -113,8 +122,8 @@
           </property>
           <property name="iconSize">
            <size>
-            <width>24</width>
-            <height>24</height>
+            <width>40</width>
+            <height>40</height>
            </size>
           </property>
          </widget>
@@ -258,112 +267,10 @@
        </item>
       </layout>
      </item>
-     <item>
-      <widget class="QTableWidget" name="tableWidget">
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-       <attribute name="horizontalHeaderVisible">
-        <bool>true</bool>
-       </attribute>
-       <attribute name="horizontalHeaderCascadingSectionResizes">
-        <bool>true</bool>
-       </attribute>
-       <attribute name="horizontalHeaderMinimumSectionSize">
-        <number>10</number>
-       </attribute>
-       <attribute name="horizontalHeaderDefaultSectionSize">
-        <number>150</number>
-       </attribute>
-       <attribute name="horizontalHeaderHighlightSections">
-        <bool>true</bool>
-       </attribute>
-       <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="horizontalHeaderStretchLastSection">
-        <bool>true</bool>
-       </attribute>
-       <attribute name="verticalHeaderVisible">
-        <bool>true</bool>
-       </attribute>
-       <attribute name="verticalHeaderStretchLastSection">
-        <bool>true</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string>Attribute Name</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Type</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Index</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Default</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Unsigned</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Null</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>A-I</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Comment</string>
-        </property>
-       </column>
-      </widget>
-     </item>
     </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>Index</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_2">
-       <property name="text">
-        <string>PKIco</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_3">
-       <property name="text">
-        <string>UKIco</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_4">
-       <property name="text">
-        <string>IXIco</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
@@ -391,6 +298,12 @@
         <iconset resource="../../resources/resources.qrc">
          <normaloff>:/rec/ico/add.ico</normaloff>:/rec/ico/add.ico</iconset>
        </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
+       </property>
       </widget>
      </item>
      <item>
@@ -407,37 +320,11 @@
         <iconset resource="../../resources/resources.qrc">
          <normaloff>:/rec/ico/minus.ico</normaloff>:/rec/ico/minus.ico</iconset>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="upButton">
-       <property name="font">
-        <font>
-         <pointsize>9</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="../../resources/resources.qrc">
-         <normaloff>:/rec/ico/up-arrow.ico</normaloff>:/rec/ico/up-arrow.ico</iconset>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="downButton">
-       <property name="font">
-        <font>
-         <pointsize>9</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="../../resources/resources.qrc">
-         <normaloff>:/rec/ico/down-arrow.ico</normaloff>:/rec/ico/down-arrow.ico</iconset>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
        </property>
       </widget>
      </item>
@@ -466,6 +353,12 @@
        <property name="icon">
         <iconset resource="../../resources/resources.qrc">
          <normaloff>:/rec/ico/success.ico</normaloff>:/rec/ico/success.ico</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>24</width>
+         <height>24</height>
+        </size>
        </property>
       </widget>
      </item>

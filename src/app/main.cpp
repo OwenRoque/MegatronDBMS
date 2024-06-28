@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     }
     QSharedPointer<Storage::DiskController> controller(new Storage::DiskController(disk));
 
-    // init buffer pool size here
+    // init buffer pool here
 
     Megatron w(nullptr, diskPath, controller, firstInit);
     w.show();

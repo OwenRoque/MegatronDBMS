@@ -9,6 +9,17 @@ qt_add_library(interface STATIC
     diskinit.ui diskinit.h diskinit.cpp
     newrelation.ui newrelation.h newrelation.cpp
     queryform.ui queryform.h queryform.cpp
+    attributetablewidget.h attributetablewidget.cpp
+
+    lineeditdelegate.h
+    comboboxdelegate.h
+    texteditdelegate.h
+    checkboxdelegate.h
+    customcomboboxdelegate.h
+    customindexcombobox.h
+    indexform.h indexform.cpp indexform.ui
+
+
 )
 
 target_link_libraries(interface PRIVATE

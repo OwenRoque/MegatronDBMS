@@ -1,6 +1,6 @@
 #include "track.h"
 
-Storage::Track::Track(const QString &name, int nSectors, int nCylinder, int nHead, int nSector)
+Storage::Track::Track(const QString &name, int nSectors, quint16 nCylinder, quint16 nHead, quint16 nSector)
 {
     createDirectory(name);
     for (int i = 0, nSectorIndex = nSector; i < nSectors; i++, nSectorIndex++)

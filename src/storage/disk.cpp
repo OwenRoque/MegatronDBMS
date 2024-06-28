@@ -15,19 +15,41 @@ Storage::Disk::Disk(const QString &name, int platters, int tracks,
     createDirectory(name);
     // Configuration file to:
     // - store init disk values
-    QFile configFile(name + "/" + "disk.config");
-    if (configFile.open(QIODevice::WriteOnly | QIODevice::Text))
-    {
-        QTextStream out(&configFile);
-        out << nPlatters << " " << nTracks << " " << nSectors << " " << sectorSize << " " << blockSize << Qt::endl;
-        configFile.close();
+    QString configPath = name + "/" + "disk.config";
+    QFileInfo configFileInfo(configPath);
+    if (!configFileInfo.exists()) {
+        QFile configFile(configPath);
+        if (configFile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QTextStream out(&configFile);
+            out << nPlatters << " " << nTracks << " " << nSectors << " " << sectorSize << " " << blockSize << Qt::endl;
+            configFile.close();
+        }
     }
     // create storage.bin
     // - store storage manager data (cylinder groups metadata, inodes ...)
-    // - it will store catalog tables' location on disk
-    QFile manager(name + "/" + "storage.bin");
-    if (manager.open(QIODevice::WriteOnly | QIODevice::Text))
-        manager.close();
+    // - it will store relations' location on disk
+    QString storagePath = name + "/" + "storage.bin";
+    QFileInfo storageFileInfo(storagePath);
+    if (!storageFileInfo.exists()) {
+        QFile manager(storagePath);
+        if (manager.open(QIODevice::WriteOnly | QIODevice::Text))
+            manager.close();
+    }
+
+    // create catalog.bin
+    // - store systemCatalog metadadata (relations, indexes, attributes)
+    // - systemCatalog tables' API are different from user-defined relations,
+    // they're directly represented as an in-memory specialized database
+    // (no records, pages or files created for them, so they cannot be stored with
+    // diskManager's API)
+    QString catalogPath = name + "/" + "catalog.bin";
+    QFileInfo catalogFileInfo(catalogPath);
+    if (!catalogFileInfo.exists()) {
+        QFile catalog(catalogPath);
+        if (catalog.open(QIODevice::WriteOnly | QIODevice::Text))
+            catalog.close();
+    }
 
     for (int i = 0, nHead = 0; i < nPlatters; i++, nHead++)
     {

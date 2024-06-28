@@ -1,6 +1,6 @@
 #include "platter.h"
 
-Storage::Platter::Platter(const QString &name, int nTracks, int nSectors, int nCylinder, int nHead, int nSector)
+Storage::Platter::Platter(const QString &name, int nTracks, int nSectors, quint16 nCylinder, quint16 nHead, quint16 nSector)
 {
     createDirectory(name);
     QString dirNameFront = name + "/" + QString::number(0);

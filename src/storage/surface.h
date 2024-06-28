@@ -10,7 +10,7 @@ namespace Storage
     public:
         Surface() = default;
         ~Surface() = default;
-        Surface(const QString&, int, int, int, int, int);
+        Surface(const QString&, int, int, quint16, quint16, quint16);
         Surface(const QString&, int, int);
         QSharedPointer<Track> getTrack(int);
         // utility interface

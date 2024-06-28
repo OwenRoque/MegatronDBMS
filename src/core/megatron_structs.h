@@ -4,6 +4,7 @@
 #include <QString>
 #include <QList>
 #include <tuple>
+#include <QDebug>
 #include "megatron_types.h"
 
 namespace Core
@@ -31,6 +32,39 @@ namespace Core
         Types::RecordFormat recFormat;
         Types::Charset charset;
         QString dataPath;
+        void print() {
+            qDebug() << relationName;
+            qDebug() << "Attributes:";
+            for (const auto& i : attributes) {
+                QString attrName;
+                Types::DataType type;
+                QString columnType;
+                quint16 maxCharLength;
+                QString defaultValue;
+                bool unsignedValue;
+                bool nullableValue;
+                bool autoIncrementValue;
+                Types::KeyConstraintType keyConstraint;
+                QString comment;
+                std::tie(attrName, type, columnType, maxCharLength, defaultValue, unsignedValue,
+                         nullableValue, autoIncrementValue, keyConstraint, comment) = i;
+
+                qDebug() << attrName << columnType << maxCharLength << unsignedValue
+                         << nullableValue << autoIncrementValue << keyConstraint << comment;
+            }
+            qDebug() << "Indexes:";
+            for (const auto& i : indexes) {
+                QString indexName;
+                QString attributeName;
+                Types::IndexType indexType;
+                Core::IndexProperties idxProperties;
+
+                // Desempaquetar la tupla en variables individuales
+                std::tie(indexName, attributeName, indexType, idxProperties) = i;
+                qDebug() << indexName << attributeName << indexType << idxProperties.isNullable
+                         << idxProperties.isClustered << idxProperties.isNonUnique;
+            }
+        }
     };
 
 }

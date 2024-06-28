@@ -11,8 +11,7 @@ namespace Storage
     public:
         Block() = default;
         ~Block() = default;
-        Block(int blockAddress, QByteArray &data);
-        void setSectors(QList<QSharedPointer<Sector>> sec);
+        Block(int blockAddress, const QByteArray &data);
         // Utility interface
         Space getSpace() const override;
         // getters
@@ -24,19 +23,21 @@ namespace Storage
             // free = f
             enum BlockType : quint8
             {
+                Free,
                 DataFixed,
                 DataVariable,
                 IndexInternal,
-                IndexLeaf,
-                Free
+                IndexLeaf
             };
             BlockType type;
         };
         Header getHeader() const;
         QByteArray getData() const;
-        void setHeader(Header::BlockType);
+        QSharedPointer<Sector> getSector(int);
+        void setId(int);
+        void setHeader(const Header::BlockType&);
         void setData(const QByteArray&);
-        QSharedPointer<Sector> getSector(int index);
+        void setSectors(QList<QSharedPointer<Sector>> sec);
 
     private:
         int blockId;

@@ -18,5 +18,7 @@
         <file>ico/up-arrow.ico</file>
         <file>ico/block.ico</file>
         <file>ico/warning.ico</file>
+        <file>ico/database-table.ico</file>
+        <file>ico/table.ico</file>
     </qresource>
 </RCC>

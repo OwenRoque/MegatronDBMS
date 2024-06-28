@@ -8,6 +8,7 @@ qt_add_library(core STATIC
     diskmanager.h diskmanager.cpp
     systemcatalog.h systemcatalog.cpp
     record.h record.cpp
+    pagefactory.h
 
 )
 
@@ -18,9 +19,4 @@ target_link_libraries(core PRIVATE
 
 target_include_directories(core INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    common
-    file
-    page
-    record
-    manager
 )

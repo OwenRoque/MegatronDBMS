@@ -1,38 +1,48 @@
 ﻿#include "systemcatalog.h"
 
-Core::SystemCatalog::SystemCatalog()
+Core::SystemCatalog::SystemCatalog(const QString& catalogPath) : catalogFile(catalogPath)
 {
     // init tables/maps with self-data description
     // this data won't be stored on disk, but in the database code itself (pg. 604)
     // new rows WILL be stored on disk, in a specific FileGroup
+
     // relations
     relationMeta relations {
-        .relationName = "relations",
-        .numberOfAttributes = 6,
+        .relationName = "MEGATRON.RELATIONS",
+        .numberOfAttributes = 7,
         .fileOrganization = Types::FileOrganization::Heap,
         .recordFormat = Types::RecordFormat::Variable,
         .charset = Default,
-        .location = 1
+        .location = 0
     };
-    this->relations.insert("relations", relations);
+    this->relations.insert("MEGATRON.RELATIONS", relations);
     relationMeta attributes {
-        .relationName = "attributes",
-        .numberOfAttributes = 12,
+        .relationName = "MEGATRON.ATTRIBUTES",
+        .numberOfAttributes = 13,
         .fileOrganization = Types::FileOrganization::Heap,
         .recordFormat = Types::RecordFormat::Variable,
         .charset = Default,
-        .location = 2
+        .location = 0
     };
-    this->relations.insert("attributes", attributes);
+    this->relations.insert("MEGATRON.ATTRIBUTES", attributes);
     relationMeta charsets {
-        .relationName = "charsets",
+        .relationName = "MEGATRON.CHARSETS",
         .numberOfAttributes = 4,
         .fileOrganization = Types::FileOrganization::Heap,
         .recordFormat = Types::RecordFormat::Variable,
         .charset = Default,
-        .location = 3
+        .location = 0
     };
-    this->relations.insert("charsets", charsets);
+    this->relations.insert("MEGATRON.CHARSETS", charsets);
+    relationMeta indexes {
+        .relationName = "MEGATRON.INDEXES",
+        .numberOfAttributes = 12,
+        .fileOrganization = Types::FileOrganization::Heap,
+        .recordFormat = Types::RecordFormat::Variable,
+        .charset = Default,
+        .location = 0
+    };
+    this->relations.insert("MEGATRON.INDEXES", indexes);
 
     // charsets
     charsetMeta latin1 {
@@ -69,9 +79,9 @@ Core::SystemCatalog::SystemCatalog()
     this->charsets.insert(Types::Charset::Utf32, utf32);
 
     // attributes (a lot)
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "relationName",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -83,9 +93,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::Primary,
         .comment = "The name of the table/relation."
     });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "numberOfAttributes",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::UTinyInt,
         .columnType = "tinyint",
         .maxCharacterLength = 0,
@@ -97,11 +107,11 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Number of attributes in the table/relation."
     });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "fileOrganization",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::Enum,
-        .columnType = "Heap, Sequential, Hash, BPlusTree",
+        .columnType = "enum(Heap, Sequential, Hash, BPlusTree)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 3,
@@ -111,11 +121,11 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "File organization on disk."
     });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "recordFormat",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::Enum,
-        .columnType = "Fixed, Variable",
+        .columnType = "enum(Fixed, Variable)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 4,
@@ -125,11 +135,11 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Row/record storage format."
     });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "charset",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::Enum,
-        .columnType = "Latin1, Utf8, Utf16, Utf32",
+        .columnType = "enum(Latin1, Utf8, Utf16, Utf32)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 5,
@@ -139,9 +149,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::Foreign,
         .comment = "Character set of the table/relation."
     });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "autoIncrement",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::UBigInt,
         .columnType = "bigint",
         .maxCharacterLength = 0,
@@ -153,9 +163,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "FileGroup ID to lookup in Disk Manager."
      });
-    this->attributes.insert("relations", {
+    this->attributes.insert("MEGATRON.RELATIONS", {
         .attributeName = "location",
-        .relationName = "relations",
+        .relationName = "MEGATRON.RELATIONS",
         .dataType = Types::DataType::UBigInt,
         .columnType = "bigint",
         .maxCharacterLength = 0,
@@ -167,9 +177,10 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "FileGroup ID to lookup in Disk Manager."
     });
-    this->attributes.insert("attributes", {
+
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "attributeName",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -181,9 +192,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Name of the column/attribute."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "relationName",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -195,12 +206,12 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::Index,
         .comment = "The name of the table/relation containing the column/attribute."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "dataType",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Enum,
-        .columnType = "TinyInt, UTinyInt, SmallInt, USmallInt, Int, UInt, "
-                      "BigInt, UBigInt, Float, Double, Bool, Enum, Char, Varchar",
+        .columnType = "enum(TinyInt, UTinyInt, SmallInt, USmallInt, Int, UInt, "
+                      "BigInt, UBigInt, Float, Double, Bool, Enum, Char, Varchar)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 3,
@@ -210,9 +221,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "The column/attribute data type."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "columnType",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -224,9 +235,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "The column/attribute data type."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "maxCharacterLength",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::USmallInt,
         .columnType = "smallint",
         .maxCharacterLength = 0,
@@ -238,9 +249,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "For string columns, the maximum length in characters."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "maxByteLength",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::UInt,
         .columnType = "int",
         .maxCharacterLength = 0,
@@ -250,11 +261,11 @@ Core::SystemCatalog::SystemCatalog()
         .isUnsigned = true,
         .autoIncrement = false,
         .key = Types::KeyConstraintType::None,
-        .comment = "For string columns, the maximum length in bytes."
+        .comment = "For string columns, the maximum length in bytes (for all columns)."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "defaultValue",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -266,9 +277,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Default value for this field."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "ordinalPosition",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::UTinyInt,
         .columnType = "tinyint",
         .maxCharacterLength = 0,
@@ -278,11 +289,11 @@ Core::SystemCatalog::SystemCatalog()
         .isUnsigned = true,
         .autoIncrement = false,
         .key = Types::KeyConstraintType::None,
-        .comment = "The position of the column within the table."
+        .comment = "The position of the column within the table. Starts at 1"
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "isNullable",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Bool,
         .columnType = "bool",
         .maxCharacterLength = 0,
@@ -294,9 +305,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "The column nullability. The value is 'true' if NULL values can be stored in the column, 'false' if not."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "isUnsigned",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Bool,
         .columnType = "bool",
         .maxCharacterLength = 0,
@@ -308,9 +319,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "If specified, disallows negative values. Deprecated for DECIMAL types (float, double)."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "autoIncrement",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Bool,
         .columnType = "bool",
         .maxCharacterLength = 0,
@@ -323,11 +334,11 @@ Core::SystemCatalog::SystemCatalog()
         .comment = "It can be used to generate a unique identity for new rows. "
                    "Only available for PRIMARY KEY or UNIQUE indexes."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "key",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Enum,
-        .columnType = "Primary, Unique, Index, Foreign, None",
+        .columnType = "enum(Primary, Unique, Index, Foreign, None)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 12,
@@ -337,9 +348,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Whether the column is indexed."
     });
-    this->attributes.insert("attributes", {
+    this->attributes.insert("MEGATRON.ATTRIBUTES", {
         .attributeName = "comment",
-        .relationName = "attributes",
+        .relationName = "MEGATRON.ATTRIBUTES",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -351,11 +362,12 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "Any comment included in the column/attribute definition."
     });
-    this->attributes.insert("charsets", {
+
+    this->attributes.insert("MEGATRON.CHARSETS", {
         .attributeName = "charset",
         .relationName = "charsets",
         .dataType = Types::DataType::Enum,
-        .columnType = "Latin1, Utf8, Utf16, Utf32",
+        .columnType = "enum(Latin1, Utf8, Utf16, Utf32)",
         .maxCharacterLength = 0,
         .maxByteLength = sizeof(quint8),
         .ordinalPosition = 1,
@@ -365,9 +377,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::Primary,
         .comment = "Charset ID."
     });
-    this->attributes.insert("charsets", {
+    this->attributes.insert("MEGATRON.CHARSETS", {
         .attributeName = "charsetName",
-        .relationName = "charsets",
+        .relationName = "MEGATRON.CHARSETS",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -379,9 +391,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "The character set name."
     });
-    this->attributes.insert("charsets", {
+    this->attributes.insert("MEGATRON.CHARSETS", {
         .attributeName = "description",
-        .relationName = "charsets",
+        .relationName = "MEGATRON.CHARSETS",
         .dataType = Types::DataType::Varchar,
         .columnType = "varchar(512)",
         .maxCharacterLength = 512,
@@ -393,9 +405,9 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "A description of the character set."
     });
-    this->attributes.insert("charsets", {
+    this->attributes.insert("MEGATRON.CHARSETS", {
         .attributeName = "maxlen",
-        .relationName = "charsets",
+        .relationName = "MEGATRON.CHARSETS",
         .dataType = Types::DataType::UTinyInt,
         .columnType = "tinyint",
         .maxCharacterLength = 0,
@@ -407,6 +419,188 @@ Core::SystemCatalog::SystemCatalog()
         .key = Types::KeyConstraintType::None,
         .comment = "The maximum number of bytes required to store one character."
     });
+
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "indexName",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 1,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "Name of the current index."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "relationName",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 2,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "Name of the relation where the current index belongs."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "attributeName",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 3,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "Name of the attribute field that has the index."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "indexType",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Enum,
+        .columnType = "enum(SequentialIndex, HashIndex, BPlusTreeIndex)",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(quint8),
+        .ordinalPosition = 4,
+        .isNullable = false,
+        .isUnsigned = true,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "The index method used (SEQUENTIAL, HASH, BTREE)."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "isNonUnique",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Bool,
+        .columnType = "bool",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(bool),
+        .ordinalPosition = 5,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "'false' if the index cannot contain duplicates, 'true' if it can."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "isNullable",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Bool,
+        .columnType = "bool",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(bool),
+        .ordinalPosition = 6,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "'true' if the column may contain NULL values and 'false' if not."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "isClustered",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Bool,
+        .columnType = "bool",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(bool),
+        .ordinalPosition = 7,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "'true' if the index is clustered (physical order), 'false' if is non-clustered (logical order)."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "ordering",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Bool,
+        .columnType = "bool",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(bool),
+        .ordinalPosition = 8,
+        .isNullable = false,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "Index order, can be ASC or DESC."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "ordinalPosition",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::UTinyInt,
+        .columnType = "tinyint",
+        .maxCharacterLength = 0,
+        .maxByteLength = sizeof(quint8),
+        .ordinalPosition = 9,
+        .isNullable = false,
+        .isUnsigned = true,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "The attribute's position within the index, not the attribute's position within the table."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "comment",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 10,
+        .isNullable = true,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "Any comment provided for the index when the index was created."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "referencedRelation",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 11,
+        .isNullable = true,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "The name of the table/relation referenced by the FOREIGN key constraint."
+    });
+    this->attributes.insert("MEGATRON.INDEXES", {
+        .attributeName = "referencedAttribute",
+        .relationName = "MEGATRON.INDEXES",
+        .dataType = Types::DataType::Varchar,
+        .columnType = "varchar(512)",
+        .maxCharacterLength = 512,
+        .maxByteLength = static_cast<quint32>(512 * this->charsets.find(Default)->maxlen),
+        .ordinalPosition = 12,
+        .isNullable = true,
+        .isUnsigned = false,
+        .autoIncrement = false,
+        .key = Types::KeyConstraintType::None,
+        .comment = "The name of the attribute/column referenced by the FOREIGN key constraint."
+    });
+
+    // Store default values at startup on disk (.bin file)
+    QFile file(catalogFile);
+    if (file.open(QIODevice::WriteOnly))
+    {
+        QDataStream out(&file);
+        out << catalogFile;
+        out << relations;
+        out << attributes;
+        out << charsets;
+        out << indexes;
+        file.close();
+    }
 }
 
 auto Core::SystemCatalog::insertRelation(const Core::SystemCatalog::relationMeta& rm)
@@ -511,7 +705,7 @@ auto Core::SystemCatalog::findAttribute(const QString &relationName, const QStri
 {
     auto range = findAttributesFor(relationName);
     auto i = std::find_if(range.first, range.second, [&attributeName](auto &v) {
-        return v.attributeName == attributeName; // v.second
+        return v.attributeName == attributeName;
     });
     return (i != range.second) ? i : attributes.end();
 }
@@ -523,7 +717,7 @@ auto Core::SystemCatalog::constFindAttribute(const QString &relationName, const 
     auto i = std::find_if(range.first, range.second, [&attributeName](const auto &v) {
         return v.attributeName == attributeName;
     });
-    return (i != range.second) ? i : attributes.end();
+    return (i != range.second) ? i : attributes.cend();
 }
 
 void Core::SystemCatalog::updateOrdinalPositions(const QString &relationName)
@@ -557,6 +751,100 @@ auto Core::SystemCatalog::constFindCharset(const Types::Charset& charset) const
     -> QMap<Types::Charset, charsetMeta>::const_iterator
 {
     return charsets.find(charset);
+}
+
+auto Core::SystemCatalog::insertIndex(indexMeta &im)
+    -> QMultiMap<QString, indexMeta>::iterator
+{
+    auto [i, end] = findIndexes(im.relationName, im.attributeName);
+
+    if (i == indexes.end()) {
+        return indexes.insert(im.relationName, im);
+    } else {
+        while (i != end) {
+            // identify composite key insertion
+            if (i->isPartOfCompositeIndex(im)) {
+                im.ordinalPosition++;
+                return indexes.insert(im.relationName, im);
+            }
+            // If it's a duplicate, do not insert
+            else if (*i == im)
+                return i;
+            ++i;
+        }
+        // if none of the previous filters apply, index is invalid somehow
+        return indexes.end();
+    }
+}
+
+template<typename Key, typename T, typename Predicate>
+static qsizetype erase_if(QMultiMap<Key, T>& map, typename QMultiMap<Key, T>::iterator range_first,
+                          typename QMultiMap<Key, T>::iterator range_last, Predicate pred) {
+    qsizetype removed_count = 0;
+
+    for (auto it = range_first; it != range_last; ++it) {
+        if (pred(it)) {
+            it = map.erase(it);
+            ++removed_count;
+        }
+    }
+
+    return removed_count;
+}
+
+auto Core::SystemCatalog::deleteIndex(const QString &relationName, const QString &indexName)
+    -> QMultiMap<QString, indexMeta>::size_type
+{
+    auto predicate = [&indexName](const auto& value) {
+        return value.value().indexName == indexName;
+    };
+    auto relationIndexes = indexes.equal_range(relationName);
+    qsizetype itemsDeleted = erase_if(indexes, relationIndexes.first, relationIndexes.second, predicate);
+    return itemsDeleted;
+}
+
+auto Core::SystemCatalog::findIndexes(const QString &relationName, const QString& attributeName)
+    -> std::pair<QMultiMap<QString, indexMeta>::iterator, QMultiMap<QString, indexMeta>::iterator>
+{
+    auto relationIndexes = indexes.equal_range(relationName);
+
+    // dummy struct to compare
+    indexMeta comparator;
+    comparator.relationName = relationName;
+    comparator.attributeName = attributeName;
+
+    auto attributeIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
+
+    // if not found
+    if (attributeIndexes.first == relationIndexes.second)
+        return {indexes.end(), indexes.end()};
+    else
+        return attributeIndexes;
+}
+
+auto Core::SystemCatalog::constFindIndexes(const QString &relationName, const QString& attributeName) const
+    -> std::pair<QMultiMap<QString, indexMeta>::const_iterator, QMultiMap<QString, indexMeta>::const_iterator>
+{
+    auto relationIndexes = indexes.equal_range(relationName);
+
+    // dummy struct to compare
+    indexMeta comparator;
+    comparator.relationName = relationName;
+    comparator.attributeName = attributeName;
+
+    auto attributeIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
+
+    // if not found
+    if (attributeIndexes.first == relationIndexes.second)
+        return {indexes.cend(), indexes.cend()};
+    else
+        return attributeIndexes;
+}
+
+auto Core::SystemCatalog::numberOfIndexes(const QString &relationName) const
+    -> QMultiMap<QString, indexMeta>::size_type
+{
+    return indexes.count(relationName);
 }
 
 bool Core::SystemCatalog::initSchema()
@@ -630,32 +918,39 @@ void Core::SystemCatalog::writeToSchema(const QString &relName)
     // schema.close();
 }
 
-QSharedPointer<Storage::DiskController> Core::SystemCatalog::getDiskController() const
+bool Core::SystemCatalog::saveOnDisk()
 {
-    return controller;
+    QFile file(catalogFile);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        QDataStream out(&file);
+        out << relations;
+        out << attributes;
+        out << charsets;
+        out << indexes;
+        file.close();
+        return true;
+    }
+    return false;
 }
 
-void Core::SystemCatalog::saveOnDisk()
+bool Core::SystemCatalog::readFromDisk()
 {
-    //
-    // QFile file(catalogFile);
-    // if (!file.open(QIODevice::WriteOnly))
-    //     return;
-    // QDataStream out(&file);
-    // // out << attributes;
-    // // out << cylinderGroups;
-    // file.close();
-}
-
-void Core::SystemCatalog::readFromDisk()
-{
-    // QFile file(catalogFile);
-    // if (!file.open(QIODevice::ReadOnly))
-    //     return;
-    // // Clear current default values
-    // // cylinderGroups.clear();
-    // QDataStream in(&file);
-    // // in >> sib;
-    // // in >> cylinderGroups;
-    // file.close();
+    QFile file(catalogFile);
+    if (file.open(QIODevice::ReadOnly))
+    {
+        // Clear current default values
+        relations.clear();
+        attributes.clear();
+        charsets.clear();
+        indexes.clear();
+        QDataStream in(&file);
+        in >> relations;
+        in >> attributes;
+        in >> charsets;
+        in >> indexes;
+        file.close();
+        return true;
+    }
+    return false;
 }

@@ -1,15 +1,11 @@
 #include "block.h"
 
-Storage::Block::Block(int blockAddress, QByteArray &data) : blockId(blockAddress)
+Storage::Block::Block(int blockAddress, const QByteArray &data)
+    : blockId(blockAddress)
 {
     QDataStream in(data);
     in >> header.type;
     in >> this->data;
-}
-
-void Storage::Block::setSectors(QList<QSharedPointer<Sector>> sec)
-{
-    sectors = sec;
 }
 
 Utility::Space Storage::Block::getSpace() const
@@ -41,9 +37,19 @@ QByteArray Storage::Block::getData() const
     return data;
 }
 
-void Storage::Block::setHeader(Header::BlockType type)
+QSharedPointer<Storage::Sector> Storage::Block::getSector(int index)
 {
-    header.type = type;
+    return sectors.at(index);
+}
+
+void Storage::Block::setId(int id)
+{
+    this->blockId = id;
+}
+
+void Storage::Block::setHeader(const Header::BlockType& type)
+{
+    this->header.type = type;
 }
 
 void Storage::Block::setData(const QByteArray &data)
@@ -51,7 +57,7 @@ void Storage::Block::setData(const QByteArray &data)
     this->data = data;
 }
 
-QSharedPointer<Storage::Sector> Storage::Block::getSector(int index)
+void Storage::Block::setSectors(QList<QSharedPointer<Sector>> sec)
 {
-    return sectors.at(index);
+    this->sectors = sec;
 }

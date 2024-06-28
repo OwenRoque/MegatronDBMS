@@ -1,12 +1,12 @@
 #include "sector.h"
 #include "disk.h"
 
-Storage::Sector::Sector(const QString &name, int nCylinder, int nHead, int nSector)
+Storage::Sector::Sector(const QString &name, quint16 nCylinder, quint16 nHead, quint16 nSector)
 {
     sectorPath = name + ".bin";
     chsAddress = std::make_tuple(nCylinder, nHead, nSector);
     QFile sector(sectorPath);
-    if (sector.open(QIODevice::WriteOnly | QIODevice::Text) && sector.size() == 0)
+    if (sector.open(QIODevice::WriteOnly) && sector.size() == 0)
     {
         currentSize = 0;
         QDataStream out(&sector);
@@ -22,7 +22,7 @@ Storage::Sector::Sector(const QString &name)
     sectorPath = name + ".bin";
     QFile sector(sectorPath);
     int nCylinder, nHead, nSector;
-    if (sector.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (sector.open(QIODevice::ReadOnly))
     {
         QDataStream in(&sector);
         // QString delim;
@@ -55,19 +55,27 @@ QString Storage::Sector::getSectorPath() const
     return sectorPath;
 }
 
-std::tuple<int, int, int> Storage::Sector::getChsAddress() const
+std::tuple<quint16, quint16, quint16> Storage::Sector::getChsAddress() const
 {
     return chsAddress;
 }
 
-int Storage::Sector::getCurrentSize() const
+quint16 Storage::Sector::getCurrentSize() const
 {
     return currentSize;
 }
 
-void Storage::Sector::setCurrentSize(int newCurrentSize)
+void Storage::Sector::setCurrentSize(quint16 newCurrentSize)
 {
     currentSize = newCurrentSize;
+}
+
+qint64 Storage::Sector::size() const
+{
+    QFile sector(sectorPath);
+    qint64 size = sector.size() - (4 * sizeof(quint16));
+    qDebug() << size;
+    return size;
 }
 
 void Storage::Sector::print() const

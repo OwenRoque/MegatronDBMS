@@ -1,23 +1,22 @@
 #include "database.h"
 #include "heapfile.h"
-#include "record.h"
-#include <QPointer>
 
-Core::Database::Database(QSharedPointer<Storage::DiskController> dc, QString storageFile, bool firstInit)
+Core::Database::Database(QSharedPointer<Storage::DiskController> dc, const QString& storagePath,
+                          const QString& catalogPath, bool firstInit)
 {
-    dm = &DiskManager::getInstance(dc, storageFile);
-    sc = &SystemCatalog::getInstance();
+    dm = &DiskManager::getInstance(dc, storagePath);
+    sc = &SystemCatalog::getInstance(catalogPath);
     // get systemCatalog data from disk, only if it's not first initialization
     if (firstInit == false)
     {
         dm->readFromDisk();     // test
-        sc->readFromDisk();     // todo
+        sc->readFromDisk();     // test
     }
-
 }
 
 Types::Return Core::Database::createRelation(Core::RelationInput response)
 {
+    // response.print();
     // more validations, handle responses
     // checking duplicate relations
     if (sc->relationExists(response.relationName))
@@ -38,13 +37,43 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     });
 
     // add attributes to relation just created
+
     for (quint8 i = 0; i < response.attributes.size(); i++)
     {
         quint32 maxByteLen;
-        switch (relation->recordFormat)
+        Types::DataType dataType = std::get<1>(response.attributes.at(i));
+        switch (dataType)
         {
-        case Types::RecordFormat::Fixed:
-        case Types::RecordFormat::Variable:
+        case Types::TinyInt:
+        case Types::UTinyInt:
+            maxByteLen = sizeof(qint8);
+            break;
+        case Types::SmallInt:
+        case Types::USmallInt:
+            maxByteLen = sizeof(qint16);
+            break;
+        case Types::Int:
+        case Types::UInt:
+            maxByteLen = sizeof(qint32);
+            break;
+        case Types::BigInt:
+        case Types::UBigInt:
+            maxByteLen = sizeof(qint64);
+            break;
+        case Types::Float:
+            maxByteLen = sizeof(float);
+            break;
+        case Types::Double:
+            maxByteLen = sizeof(double);
+            break;
+        case Types::Bool:
+            maxByteLen = sizeof(bool);
+            break;
+        case Types::Enum:
+            maxByteLen = sizeof(qint8);
+            break;
+        case Types::Char:
+        case Types::Varchar:
             // as stated in the docs: "maxByteLength should be the same as maxCharLength, except for multibyte character sets."
             // only if charset == Latin1 they'll be equal, otherwise not.
             maxByteLen = std::get<3>(response.attributes.at(i)) *
@@ -69,6 +98,27 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
         });
     }
 
+    // add indexes to relation just created
+    for (quint8 i = 0; i < response.indexes.size(); i++)
+    {
+        Core::SystemCatalog::indexMeta im = {
+            .indexName = std::get<0>(response.indexes.at(i)),
+            .relationName = relation->relationName,
+            .attributeName = std::get<1>(response.indexes.at(i)),
+            .indexType = std::get<2>(response.indexes.at(i)),
+            .isNonUnique = std::get<3>(response.indexes.at(i)).isNonUnique,
+            .isNullable = std::get<3>(response.indexes.at(i)).isNullable,
+            .isClustered= std::get<3>(response.indexes.at(i)).isClustered,
+            .ordering = std::get<3>(response.indexes.at(i)).order,
+            .ordinalPosition = std::get<3>(response.indexes.at(i)).ordinalPosition,
+            .comment = std::get<3>(response.indexes.at(i)).comment,
+            // foreign keys are not defined inside CREATE TABLE statement
+            .referencedRelation = "",
+            .referencedAttribute = "",
+        };
+        sc->insertIndex(im);
+    }
+
     QSharedPointer<Core::File> file;
 
     switch (response.fileOrg)
@@ -76,103 +126,22 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     case Types::FileOrganization::Heap:
         file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create());
         break;
+    // Not implemented yet
     case Types::FileOrganization::Sequential:
     case Types::FileOrganization::Hash:
     case Types::FileOrganization::BPlusTree:
         break;
     }
 
-    QQueue<QPointer<Core::Record>> records;
-    // Extract records and calculate fileSize (overhead included)
-    int fileSize = 0;
     // Check if a bulk insert operation will be done after creating the relation
     if (!response.dataPath.isEmpty())
     {
-        file->bulkInsertRecords(response.dataPath);
-        // QFile newData(response.dataPath);
-        // if (newData.open(QIODevice::ReadOnly))
-        // {
-        //     QTextStream in(&newData);
-        //     // ignore header
-        //     QString line = in.readLine();
-        //     while (!in.atEnd())
-        //     {
-        //         QString line = in.readLine();
-        //         // parse record algorithm
-        //         std::stringstream inLine(line.toStdString());
-        //         QStringList values;
-        //         bool insideQuotes = false;
-        //         QString word;
-        //         char c;
-        //         while (inLine.get(c))
-        //         {
-        //             // qDebug() << word;
-        //             if (c == ',') {
-        //                 // If no content
-        //                 if (word.isEmpty()) {
-        //                     // qDebug() << "Nan";
-        //                     values.append("");
-        //                 }
-        //                 else if (insideQuotes)
-        //                     word+=c;
-        //                 else {
-        //                     values.append(word);
-        //                     word.clear();
-        //                 }
-        //             }
-        //             // not so sure about some (unlikely) cases like  ""hello", he said"
-        //             else if (c == '"') {
-        //                 if (word.isEmpty())
-        //                     insideQuotes = true;
-        //                 else {
-        //                     char p = inLine.peek();
-        //                     // If data ends
-        //                     if (p == ',') {
-        //                         values.append(word);
-        //                         word.clear();
-        //                         insideQuotes = false;
-        //                         inLine.seekg(1, std::ios_base::cur);
-        //                     }
-        //                     // Then it's a '"' inside commillas
-        //                     else
-        //                         word+=c;
-        //                 }
-        //             }
-        //             else word+=c;
-        //         }
-        //         // handle last field
-        //         if (!word.isEmpty())
-        //             values.append(word);
-
-        //         for (qsizetype i = 0; i < values.size(); ++i)
-        //         {
-        //             const auto &w = values.at(i);
-        //             // create RECORDD
-        //             qDebug() << "Creating record...";
-        //             // add to queue, get size with .head() method
-        //         }
-        //     }
-        //     // run table.bulk<insert
-        //     // validate record data according to constraints - relation.bulkInsert method
-        //     // also validate when inserting single record - relation.Insert method
-        //     // only insert the valid ones, reject the invalid
-        //     // as records are created as objects (record.h), fill them one by one
-        //     // when BufferManager is full, write to disk evicted pages
-        //     newData.close();
-        // }
-        // else return Types::Return::OpenError;
+        Types::Return ret = file->bulkInsertRecords(response.dataPath);
+        return ret;
     }
-
-
-
-
-
-
 
     // TODO: implement SaveToDisk in each FileOrganization
     // only when pressed 'save' button, CTRL+S
-
-
 
     return Types::Return::Success;
 }

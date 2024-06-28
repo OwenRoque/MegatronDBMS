@@ -13,22 +13,24 @@ namespace Storage
     public:
         Sector() = default;
         ~Sector() = default;
-        Sector(const QString&, int, int, int);
+        Sector(const QString&, quint16, quint16, quint16);
         Sector(const QString&);
         // utility interface
         Space getSpace() const override;
         // getters
         QString getSectorPath() const;
-        std::tuple<int, int, int> getChsAddress() const;
-        int getCurrentSize() const;
+        std::tuple<quint16, quint16, quint16> getChsAddress() const;
+        quint16 getCurrentSize() const;
         // size setter
-        void setCurrentSize(int);
+        void setCurrentSize(quint16);
+        // system size
+        qint64 size() const;
         void print() const;
 
     private:
         QString sectorPath;
-        std::tuple<int, int, int> chsAddress;
-        int currentSize;
+        std::tuple<quint16, quint16, quint16> chsAddress;
+        quint16 currentSize;
 
     };
 }

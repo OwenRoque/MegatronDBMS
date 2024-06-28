@@ -1,6 +1,7 @@
 #ifndef NEWRELATION_H
 #define NEWRELATION_H
 
+#include <QTableWidgetItem>
 #include <QDialog>
 #include <QString>
 #include <QFile>
@@ -10,14 +11,15 @@
 #include <QMessageBox>
 #include <QLabel>
 #include <QLineEdit>
-#include <QRegularExpression>
-#include <QInputDialog>
+#include <QTextEdit>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QKeyEvent>
+#include <QVariant>
 #include <QStandardItemModel>
+#include <QSet>
 #include <megatron_types.h>
 #include <megatron_structs.h>
+#include "attributetablewidget.h"
 
 namespace Ui {
 class NewRelation;
@@ -33,11 +35,6 @@ public:
     Core::RelationInput getDataPackage() const;
 
 private slots:
-    // for tablewidget
-    void addRow();
-    void removeRow();
-    void moveRowUp();
-    void moveRowDown();
     // for file upload
     bool loadFile(const QString&);
     void open();
@@ -46,13 +43,15 @@ private slots:
 
 private:
     Ui::NewRelation *ui;
-    void swapRows(int, int);
-    void error();
-    void success(const QString&, const QString&);
+    AttributeTableWidget *tableWidget;
 
+    void error();
+    void success(const QString&, const QStringList&);
+
+    // Data to be sent to Database via DataPackage
     QString relationName;
     QString dataPath;
-    // attributeName, dataType, columnType, maxCharLen, defaultValue nullable, unsigned, ai, constraint, comment
+    // attributeName, dataType, columnType, maxCharLen, defaultValue, nullable, unsigned, ai, constraint, comment
     // missing attribute properties will be calculated internally, or are already included in this struct
     QList<std::tuple<QString, Types::DataType, QString, quint16, QString,
                      bool, bool, bool, Types::KeyConstraintType, QString>> attributes;

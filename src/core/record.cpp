@@ -167,7 +167,7 @@ static QVariant readTypedData(QDataStream& stream, Types::Charset charset, int l
     ValueType value;
 
     QByteArray rawValue;
-    if constexpr (T == Types::DataType::Char) {
+    if constexpr (std::is_same_v<ValueType, QString>) {
         rawValue.resize(length);
         stream.readRawData(rawValue.data(), length);
         switch (charset) {
@@ -194,13 +194,10 @@ static QVariant readTypedData(QDataStream& stream, Types::Charset charset, int l
             value = fromUtf32(rawValue);
             break;
         }
-    } else if constexpr (T == Types::DataType::Varchar) {
-
     }
     else {
         stream.readRawData(reinterpret_cast<char*>(&value), sizeof(ValueType));
     }
-
 
     return QVariant(value);
 }
@@ -433,7 +430,6 @@ bool Core::FLRecord::setField(const QString& relationName, int position, const Q
             QByteArray value;
             QDataStream stream(&value, QIODevice::WriteOnly);
             // handle conversion based on type
-            // TODO: REPLACE WITH WRITERAWDATA QDATASTREAM METHOD!!!
             switch (it->dataType)
             {
             case Types::DataType::TinyInt:
@@ -710,9 +706,143 @@ Core::VLRecord::VLRecord(const QString &relationName, const QByteArray &rawData)
     data = rawData.mid(size);
 }
 
-// TODO:
+// index starts at 1
 QVariant Core::VLRecord::getField(const QString& relationName, int index) const
 {
+    Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
+    auto relation = sc->constFindRelation(relationName);
+    // sort from the least to the most recently inserted value
+    auto [beg, it] = sc->constFindAttributesFor(relationName);
+
+    // sum offset
+    qsizetype base = 0;
+    QVariant result;
+    while (it != beg)
+    {
+        --it;
+        if (it->ordinalPosition == index)
+        {
+            if (this->nullBitmap.testBit(index) == true)
+            {
+                // handle conversion based on type
+                QByteArray rawValue;
+                if (it->dataType != Types::DataType::Varchar)
+                    rawValue = data.mid(base, it->maxByteLength);
+                else
+                    // size of string offset/length pointer
+                    rawValue = data.mid(base, 4);
+                QDataStream stream(&rawValue, QIODeviceBase::ReadOnly);
+                switch (it->dataType)
+                {
+                case Types::DataType::TinyInt:
+                    result = readTypedData<Types::DataType::TinyInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::UTinyInt:
+                    result = readTypedData<Types::DataType::UTinyInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::SmallInt:
+                    result = readTypedData<Types::DataType::SmallInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::USmallInt:
+                    result = readTypedData<Types::DataType::USmallInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::Int:
+                    result = readTypedData<Types::DataType::Int>(stream, relation->charset);
+                    break;
+                case Types::DataType::UInt:
+                    result = readTypedData<Types::DataType::UInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::BigInt:
+                    result = readTypedData<Types::DataType::BigInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::UBigInt:
+                    result = readTypedData<Types::DataType::UBigInt>(stream, relation->charset);
+                    break;
+                case Types::DataType::Float:
+                    result = readTypedData<Types::DataType::Float>(stream, relation->charset);
+                    break;
+                case Types::DataType::Double:
+                    result = readTypedData<Types::DataType::Double>(stream, relation->charset);
+                    break;
+                case Types::DataType::Bool:
+                    result = readTypedData<Types::DataType::Bool>(stream, relation->charset);
+                    break;
+                case Types::DataType::Enum:
+                {
+                    QStringList enumValues = it->columnType.split(',');
+                    quint8 value;
+                    stream.readRawData(reinterpret_cast<char*>(&value), sizeof(quint8));
+                    result = enumValues.at(value);
+                    break;
+                }
+                case Types::DataType::Char:
+                    result = readTypedData<Types::DataType::Char>(stream, relation->charset, it->maxByteLength);
+                    break;
+                case Types::DataType::Varchar:
+                {
+                    // read string pointer
+                    QDataStream ss(rawValue);
+                    qint16 offset, length;
+                    ss >> offset >> length;
+                    QByteArray value = data.mid(offset, length);
+                    // move stream pointer
+                    stream.device()->seek(offset);
+                    result = readTypedData<Types::DataType::Varchar>(stream, relation->charset, length);
+                    break;
+                }
+                }
+                return result;
+            }
+            // specified column/index in the record is null/has no data stored
+            else return QVariant();
+        }
+        else
+        {
+            // shift base/position pointer in byte array only
+            // if is NOT NULL
+            if (this->nullBitmap.testBit(index) == true)
+            {
+                // update base
+                switch (it->dataType)
+                {
+                case Types::DataType::TinyInt:
+                case Types::DataType::UTinyInt:
+                case Types::DataType::Enum:
+                    base += sizeof(qint8);
+                    break;
+                case Types::DataType::SmallInt:
+                case Types::DataType::USmallInt:
+                    base += sizeof(qint16);
+                    break;
+                case Types::DataType::Int:
+                case Types::DataType::UInt:
+                    base += sizeof(qint32);
+                    break;
+                case Types::DataType::BigInt:
+                case Types::DataType::UBigInt:
+                    base += sizeof(qint64);
+                    break;
+                case Types::DataType::Float:
+                    base += sizeof(float);
+                    break;
+                case Types::DataType::Double:
+                    base += sizeof(double);
+                    break;
+                case Types::DataType::Bool:
+                    base += sizeof(bool);
+                    break;
+                case Types::DataType::Char:
+                    base += it->maxByteLength;
+                    break;
+                case Types::DataType::Varchar:
+                    // size of offset/length string pointer
+                    base += 4;
+                    break;
+                }
+            }
+        }
+    }
+    // invalid position
     return QVariant();
 }
 

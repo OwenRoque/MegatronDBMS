@@ -105,6 +105,7 @@ namespace Core
         int currCylinderPos;
         QHash<int, QVariant> fileGroups;
         QString storageFile;
+
         Q_DISABLE_COPY(DiskManager);
 
     };
@@ -123,8 +124,6 @@ namespace Core
         QList<int> blocks;
         // location
         int cylinderGroup;
-        // moved autogrow method to DiskManager
-        // dm instance would've invalidated previous data from higher dm instances
 
         friend QDataStream& operator<<(QDataStream& out, const FileNode& node) {
             out << node.size << node.blocks;
@@ -166,15 +165,15 @@ namespace Core
         Types::FileOrganization type = Types::FileOrganization::Heap;
         FileNode freeSpace;
         FileNode data;
-        // QList<FileNode> indexes;
+        QList<FileNode> indexes;
 
         friend QDataStream& operator<<(QDataStream& out, const HeapGroup& group) {
-            out << group.type << group.freeSpace << group.data;
+            out << group.type << group.freeSpace << group.data << group.indexes;
             return out;
         }
 
         friend QDataStream& operator>>(QDataStream& in, HeapGroup& group) {
-            in >> group.type >> group.freeSpace >> group.data;
+            in >> group.type >> group.freeSpace >> group.data >> group.indexes;
             return in;
         }
 
