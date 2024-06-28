@@ -3,6 +3,7 @@
 
 #include <QFile>
 #include <QQueue>
+#include "freespacemap.h"
 #include "file.h"
 
 namespace Core
@@ -15,7 +16,10 @@ namespace Core
         Types::Return bulkInsertRecords(const QString&) override;
         Types::Return deleteRecord() override;
 
+    private:
+        FreeSpaceMap freeSpace;
     };
+
 }
 
 #endif // HEAPFILE_H

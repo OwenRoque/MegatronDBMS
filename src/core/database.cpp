@@ -11,6 +11,7 @@ Core::Database::Database(QSharedPointer<Storage::DiskController> dc, const QStri
     {
         dm->readFromDisk();     // test
         sc->readFromDisk();     // test
+        // init & fill file List
     }
 }
 
@@ -25,7 +26,7 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     // add relation to catalog
     auto relation = sc->insertRelation({
         .relationName = response.relationName,
-        .numberOfAttributes = static_cast<quint8>(response.attributes.size()),
+        .numberOfAttributes = 0, /*static_cast<quint8>(response.attributes.size()),*/
         .fileOrganization = response.fileOrg,
         .recordFormat = response.recFormat,
         .charset = response.charset,
@@ -124,7 +125,7 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     switch (response.fileOrg)
     {
     case Types::FileOrganization::Heap:
-        file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create());
+        file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName));
         break;
     // Not implemented yet
     case Types::FileOrganization::Sequential:

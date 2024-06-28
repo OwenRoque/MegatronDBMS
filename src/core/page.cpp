@@ -289,6 +289,13 @@ bool Core::SlottedPage::deleteRecord(const quint16 &slot_id)
     return true;
 }
 
+// TODO
+QByteArray Core::SlottedPage::findRecord(const quint16 &slot_id)
+{
+    QString ret = "find " + QString::number(slot_id) + " record.";
+    return ret.toUtf8();
+}
+
 QSharedPointer<Storage::Block> Core::SlottedPage::toBlock()
 {
     QSharedPointer<Storage::Block> block;

@@ -16,6 +16,7 @@ namespace Core
 
     class DataPageFactory : public PageFactory
     {
+    public:
         QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) const override {
             auto header = block->getHeader();
             if (header.type == Storage::Block::Header::DataFixed) {

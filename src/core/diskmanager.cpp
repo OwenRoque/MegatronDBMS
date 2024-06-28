@@ -264,8 +264,8 @@ quint64 Core::DiskManager::newFileGroup(Types::FileOrganization fo, quint64 file
         HeapGroup heap;
         // allocating data blocks first
         heap.data = allocateFileNode(fileSize);
-        // 5 bytes is the size of a FreeSpaceMap entry
-        heap.freeSpace = allocateFileNode(5 * heap.data.blocks.size());
+        // 9 bytes is the size of a FreeSpaceMap entry
+        heap.freeSpace = allocateFileNode(9 * heap.data.blocks.size());
 
         // fileGroupId from Information Block
         FileGroupLocation = sib.fileGroupIdCounter;

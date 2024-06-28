@@ -9,6 +9,7 @@ qt_add_library(core STATIC
     systemcatalog.h systemcatalog.cpp
     record.h record.cpp
     pagefactory.h
+    freespacemap.h freespacemap.cpp
 
 )
 

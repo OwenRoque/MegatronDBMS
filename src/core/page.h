@@ -19,7 +19,6 @@ namespace Core
         virtual ~Page() = 0;
         int getId() const;
         virtual QSharedPointer<Storage::Block> toBlock() = 0;
-        virtual bool canInsert() const = 0;
 
     protected:
         int id;
