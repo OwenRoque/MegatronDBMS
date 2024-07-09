@@ -79,6 +79,7 @@ namespace Types
         OpenError,
         ParseError,
         DuplicateError,
+        RuntimeError,
         Success
     };
     Q_ENUM_NS(Return)

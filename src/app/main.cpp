@@ -1,5 +1,6 @@
 #include "megatron.h"
 #include <diskinit.h>
+#include <diskload.h>
 #include <diskcontroller.h>
 
 #include <QApplication>
@@ -25,12 +26,12 @@ int main(int argc, char *argv[])
     bool firstInit = true;
     if (listFiles.isEmpty())
     {
-        DiskInit dialog;
-        if (dialog.exec() != QDialog::Accepted)
+        DiskInit initDialog;
+        if (initDialog.exec() != QDialog::Accepted)
             return 0;
-        diskPath = disksPath + "/" + dialog.name;
-        disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, dialog.nPlatters, dialog.nTracks,
-                                             dialog.nSectors, dialog.sectorSize, dialog.blockSize, firstInit));
+        diskPath = disksPath + "/" + initDialog.name;
+        disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, initDialog.nPlatters, initDialog.nTracks,
+                                             initDialog.nSectors, initDialog.sectorSize, initDialog.blockSize, firstInit));
     }
     // or choose a disk (multiple disks can be created, each one with different data)
     else
@@ -38,10 +39,22 @@ int main(int argc, char *argv[])
         firstInit = false;
         QStringList disks;
         for (const QFileInfo& info : listFiles) disks.append(info.fileName());
-        bool ok;
-        QString name = QInputDialog::getItem(nullptr, "Load Disk", "Disks available:", disks, 0, false, &ok);
-        if (ok && !name.isEmpty())
+        DiskLoad loadDialog(disks);
+        // QObject::connect(&loadDialog, &DiskLoad::newDiskRequested, &loadDialog, [&]() {
+        //     // exit code for this case is rejected
+        //     firstInit = true;
+        //     DiskInit initDialog;
+        //     if (initDialog.exec() == QDialog::Accepted) {
+        //         diskPath = disksPath + "/" + initDialog.name;
+        //         disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, initDialog.nPlatters, initDialog.nTracks, initDialog.nSectors,
+        //                                                                initDialog.sectorSize, initDialog.blockSize, firstInit));
+        //     }
+        // });
+        // if (/*ok && */!name.isEmpty())
+        auto ret = loadDialog.exec();
+        if (ret == QDialog::Accepted)
         {
+            QString name = loadDialog.getSelectedDisk();
             QFile configFile(disksPath + "/" + name + "/" + "disk.config");
             configFile.open(QIODevice::ReadOnly | QIODevice::Text);
             int nPlatters, nTracks, nSectors, sSize, bSize;
@@ -50,8 +63,20 @@ int main(int argc, char *argv[])
             diskPath = disksPath + "/" + name;
             disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, nPlatters, nTracks, nSectors, sSize, bSize, firstInit));
         }
-        else
+        else if (ret == QDialog::Rejected)
             return 0;
+        else if (ret == 2)
+        {
+            firstInit = true;
+            DiskInit initDialog;
+            if (initDialog.exec() != QDialog::Accepted) {
+                return 0;
+            }
+            // Asignar parámetros del nuevo disco
+            diskPath = disksPath + "/" + initDialog.name;
+            disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, initDialog.nPlatters, initDialog.nTracks, initDialog.nSectors,
+                                                                   initDialog.sectorSize, initDialog.blockSize, firstInit));
+        }
     }
     QSharedPointer<Storage::DiskController> controller(new Storage::DiskController(disk));
 

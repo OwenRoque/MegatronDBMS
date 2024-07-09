@@ -1,6 +1,6 @@
 ﻿#include "systemcatalog.h"
 
-Core::SystemCatalog::SystemCatalog(const QString& catalogPath) : catalogFile(catalogPath)
+Core::SystemCatalog::SystemCatalog(const QString& catalogPath, bool firstInit) : catalogFile(catalogPath)
 {
     // init tables/maps with self-data description
     // this data won't be stored on disk, but in the database code itself (pg. 604)
@@ -45,6 +45,9 @@ Core::SystemCatalog::SystemCatalog(const QString& catalogPath) : catalogFile(cat
     this->relations.insert("MEGATRON.INDEXES", indexes);
 
     // charsets
+    // IMPORTANT: In this implementation CHAR datatype supports fixed-length charsets only
+    // to store variable-length charsets/data VARCHAR is recommended
+    // research about NCHAR, NVARCHAR datatypes and storage format
     charsetMeta latin1 {
         .charset = Types::Charset::Latin1,
         .charsetName = "Latin1",
@@ -590,16 +593,18 @@ Core::SystemCatalog::SystemCatalog(const QString& catalogPath) : catalogFile(cat
     });
 
     // Store default values at startup on disk (.bin file)
-    QFile file(catalogFile);
-    if (file.open(QIODevice::WriteOnly))
-    {
-        QDataStream out(&file);
-        out << catalogFile;
-        out << relations;
-        out << attributes;
-        out << charsets;
-        out << indexes;
-        file.close();
+    if (firstInit) {
+        QFile file(catalogFile);
+        if (file.open(QIODevice::WriteOnly))
+        {
+            QDataStream out(&file);
+            out << catalogFile;
+            out << relations;
+            out << attributes;
+            out << charsets;
+            out << indexes;
+            file.close();
+        }
     }
 }
 
@@ -847,39 +852,6 @@ auto Core::SystemCatalog::numberOfIndexes(const QString &relationName) const
     return indexes.count(relationName);
 }
 
-bool Core::SystemCatalog::initSchema()
-{
-    // Read schema and load 'tables' if any
-    // create serialize/deserialize and call them, this method is deprecated!!
-    // QFile schema(schemaPath);
-    // if (schema.open(QIODevice::ReadOnly | QIODevice::Text) && schema.size() != 0) {
-    //     QTextStream in(&schema);
-    //     while (!in.atEnd()) {
-    //         QString line = in.readLine();
-    //         QStringList parts = line.split('#');
-    //         QString tableName = parts.takeFirst();
-    //         int pos = 0;
-    //         for (int i = 0; i < parts.size(); i += 2) {
-    //             attributeMeta meta;
-    //             // meta.tableName = tableName;
-    //             meta.attributeName = parts.at(i);
-    //             meta.type = parts.at(i + 1).at(0).toLatin1();
-    //             meta.position = pos;
-    //             meta.length = 0;
-    //             if (meta.type == 'c' || meta.type == 'v') {
-    //                 int start = parts[i + 1].indexOf('(') + 1;
-    //                 int end = parts[i + 1].indexOf(')');
-    //                 meta.length = QStringView{parts[i + 1]}.mid(start, end - start).toInt();
-    //             }
-    //             attributes.insert(tableName, meta);
-    //             pos++;
-    //         }
-    //     }
-    //     return true;
-    // }
-    return false;
-}
-
 
 // When pressed 'save' button
 void Core::SystemCatalog::writeToSchema(const QString &relName)
@@ -918,7 +890,7 @@ void Core::SystemCatalog::writeToSchema(const QString &relName)
     // schema.close();
 }
 
-bool Core::SystemCatalog::saveOnDisk()
+bool Core::SystemCatalog::saveToDisk()
 {
     QFile file(catalogFile);
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))

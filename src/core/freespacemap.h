@@ -28,7 +28,7 @@ namespace Core
         QByteArray toBytes() const;
         void fromBytes(const QByteArray& fsm);
         void printHeap() const;
-        size_t getHeapSize() const;
+        size_t size() const;
 
     private:
         std::priority_queue<QPair, std::vector<QPair>, Compare> maxHeap;

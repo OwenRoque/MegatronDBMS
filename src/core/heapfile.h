@@ -15,6 +15,7 @@ namespace Core
         Types::Return insertRecord() override;
         Types::Return bulkInsertRecords(const QString&) override;
         Types::Return deleteRecord() override;
+        bool autogrow() override;
 
     private:
         FreeSpaceMap freeSpace;

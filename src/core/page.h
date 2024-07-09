@@ -53,6 +53,7 @@ namespace Core
         virtual bool addRecord(const Core::Record&) = 0;
         virtual bool deleteRecord(const quint16&) = 0;
         virtual QByteArray findRecord(const quint16&) = 0;
+        virtual quint8 getFreeSpace() const = 0;
 
     };
 
@@ -64,6 +65,7 @@ namespace Core
         bool addRecord(const Core::Record&) override;
         bool deleteRecord(const quint16&) override;
         QByteArray findRecord(const quint16&) override;
+        quint8 getFreeSpace() const override;
         QSharedPointer<Storage::Block> toBlock() override;
 
     private:
@@ -82,6 +84,7 @@ namespace Core
         bool addRecord(const Core::Record&) override;
         bool deleteRecord(const quint16&) override;
         QByteArray findRecord(const quint16&) override;
+        quint8 getFreeSpace() const override;
         QSharedPointer<Storage::Block> toBlock() override;
 
     private:

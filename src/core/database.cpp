@@ -4,41 +4,39 @@
 Core::Database::Database(QSharedPointer<Storage::DiskController> dc, const QString& storagePath,
                           const QString& catalogPath, bool firstInit)
 {
-    dm = &DiskManager::getInstance(dc, storagePath);
-    sc = &SystemCatalog::getInstance(catalogPath);
+    dm = &DiskManager::getInstance(dc, storagePath, firstInit);
+    sc = &SystemCatalog::getInstance(catalogPath, firstInit);
     // get systemCatalog data from disk, only if it's not first initialization
     if (firstInit == false)
     {
-        dm->readFromDisk();     // test
-        sc->readFromDisk();     // test
+        dm->readFromDisk();
+        sc->readFromDisk();
         // init & fill file List
     }
 }
 
 Types::Return Core::Database::createRelation(Core::RelationInput response)
 {
-    // response.print();
     // more validations, handle responses
     // checking duplicate relations
     if (sc->relationExists(response.relationName))
         return Types::Return::DuplicateError;
 
     // add relation to catalog
+    quint64 autoIncValue = response.autoIncrementFieldExists();
     auto relation = sc->insertRelation({
         .relationName = response.relationName,
         .numberOfAttributes = 0, /*static_cast<quint8>(response.attributes.size()),*/
         .fileOrganization = response.fileOrg,
         .recordFormat = response.recFormat,
         .charset = response.charset,
-        .autoIncrement = 1,
-        .location = 0
-        // location 0 represents that it's not allocated on disk still (undef. loc)
-        // will be defined whether a bulk insert is made or not
-        // dm->newFileGroup(response.fileOrg, fileSize)
+        .autoIncrement = autoIncValue,
+        .location = dm->newFileGroup(response.fileOrg)
+        // file will be immediately allocated on disk, with a default size
+        // when file is full/near full, it will autogrow.
     });
 
     // add attributes to relation just created
-
     for (quint8 i = 0; i < response.attributes.size(); i++)
     {
         quint32 maxByteLen;
@@ -122,16 +120,21 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
 
     QSharedPointer<Core::File> file;
 
-    switch (response.fileOrg)
-    {
-    case Types::FileOrganization::Heap:
-        file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName));
-        break;
-    // Not implemented yet
-    case Types::FileOrganization::Sequential:
-    case Types::FileOrganization::Hash:
-    case Types::FileOrganization::BPlusTree:
-        break;
+    try {
+        switch (response.fileOrg)
+        {
+        case Types::FileOrganization::Heap:
+            file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName));
+            break;
+        // TODO
+        case Types::FileOrganization::Sequential:
+        case Types::FileOrganization::Hash:
+        case Types::FileOrganization::BPlusTree:
+            break;
+        }
+    }
+    catch (const std::exception& e) {
+        qCritical() << "Exception caught:" << e.what();
     }
 
     // Check if a bulk insert operation will be done after creating the relation
@@ -144,5 +147,7 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     // TODO: implement SaveToDisk in each FileOrganization
     // only when pressed 'save' button, CTRL+S
 
+    dm->saveToDisk();
+    sc->saveToDisk();
     return Types::Return::Success;
 }

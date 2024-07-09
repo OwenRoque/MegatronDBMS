@@ -65,6 +65,13 @@ namespace Core
                          << idxProperties.isClustered << idxProperties.isNonUnique;
             }
         }
+        bool autoIncrementFieldExists() {
+            for (const auto& i : attributes) {
+                if (std::get<7>(i) == true)
+                    return true;
+            }
+            return false;
+        }
     };
 
 }

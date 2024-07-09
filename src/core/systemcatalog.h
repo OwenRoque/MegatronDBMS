@@ -20,9 +20,9 @@ namespace Core
     {
         Q_OBJECT
     public:
-        static SystemCatalog& getInstance(const QString& catalogPath = QString())
+        static SystemCatalog& getInstance(const QString& catalogPath = QString(), bool firstInit = false)
         {
-            static SystemCatalog singleton(catalogPath);
+            static SystemCatalog singleton(catalogPath, firstInit);
             return singleton;
         }
 
@@ -257,14 +257,13 @@ namespace Core
         // QMultimap useful methods to access to indexes ...
 
         // fix these and that's it
-        bool initSchema();
         void writeToSchema(const QString &);
         // persistence
-        bool saveOnDisk();
+        bool saveToDisk();
         bool readFromDisk();
 
     private:
-        SystemCatalog(const QString& catalogPath = QString());
+        SystemCatalog(const QString& catalogPath = QString(), bool firstInit = false);
 
         QMap<QString, relationMeta> relations;
         QMultiMap<QString, attributeMeta> attributes;

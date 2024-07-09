@@ -2,11 +2,12 @@
 #include "systemcatalog.h"
 #include <QQueue>
 #include <QStringConverter>
+#include <QRegularExpression>
 #include <limits>
 
 template<Types::DataType T>
 static void writeTypedData(QDataStream& stream, const QString& unformatted, Types::RecordFormat rf,
-                    Types::Charset charset, quint32 maxByteLength, quint64 autoIncrementValue)
+                           Types::Charset charset, quint32 maxCharacterLength, quint64 autoIncrementValue)
 {
     using ValueType = typename Types::DTAlias<T>::type;
     ValueType value;
@@ -23,7 +24,7 @@ static void writeTypedData(QDataStream& stream, const QString& unformatted, Type
     // NULL values in floating-point numbers = numeric_limits<T>::quiet_NaN()
     if (unformatted == "" || unformatted.isEmpty()) {
         switch (rf) {
-        case Types::Fixed:
+        case Types::RecordFormat::Fixed:
         {
             if constexpr (std::is_integral_v<ValueType> && std::is_signed_v<ValueType>) {
                 value = std::numeric_limits<ValueType>::min();
@@ -37,7 +38,7 @@ static void writeTypedData(QDataStream& stream, const QString& unformatted, Type
             break;
         }
         // this case won't ever happen
-        case Types::Variable:
+        case Types::RecordFormat::Variable:
             return;
         }
     }
@@ -64,47 +65,43 @@ static void writeTypedData(QDataStream& stream, const QString& unformatted, Type
             value = unformatted.toDouble();
         } else if constexpr (std::is_same_v<ValueType, bool>) {
             value = (unformatted.toLower() == "true" || unformatted == "1");
-        } else if constexpr (T == Types::DataType::Char) {
-            // handle charset type
-            QByteArray value;
-            switch (charset) {
-            case Types::Latin1:
-            {
-                auto toLatin1 = QStringEncoder(QStringEncoder::Latin1);
-                value = toLatin1(unformatted);
-                break;
+        } else if constexpr (std::is_same_v<ValueType, QString>) {
+            // IMPORTANT: In this implementation CHAR datatype supports fixed-length charsets only
+            // to store variable-length charsets/data VARCHAR is recommended
+            // research about NCHAR, NVARCHAR datatypes and storage format
+
+            QString input = unformatted;
+
+            // truncate excedent characters
+            if (input.size() > maxCharacterLength)
+                input = input.left(maxCharacterLength);
+
+            QStringConverter::Encoding qtEncoding;
+
+            if constexpr (T == Types::DataType::Varchar) {
+                switch (charset) {
+                    case Types::Charset::Latin1: qtEncoding = QStringConverter::Latin1; break;
+                    case Types::Charset::Utf8: qtEncoding = QStringConverter::Utf8; break;
+                    case Types::Charset::Utf16: qtEncoding = QStringConverter::Utf16; break;
+                    case Types::Charset::Utf32: qtEncoding = QStringConverter::Utf32; break;
+                }
             }
-            case Types::Utf8:
-            {
-                auto toUtf8 = QStringEncoder(QStringEncoder::Utf8);
-                value = toUtf8(unformatted);
-                break;
-            }
-            case Types::Utf16:
-            {
-                auto toUtf16 = QStringEncoder(QStringEncoder::Utf16);
-                value = toUtf16(unformatted);
-                break;
-            }
-            case Types::Utf32:
-            {
-                auto toUtf32 = QStringEncoder(QStringEncoder::Utf32);
-                value = toUtf32(unformatted);
-                break;
-            }
-            }
-            if (value.size() < maxByteLength)
+            else if constexpr (T == Types::DataType::Char) {
                 // fill with trailing spaces
-                value.append(maxByteLength - value.size(), ' ');
-            if (value.size() > maxByteLength)
-                // truncate excedent
-                value = value.left(maxByteLength);
-            // not handling VARCHAR, VARCHAR is not allowed in Fixed-length format
-            // and it will be handled differently in Variable-length (offsets-lengths)
+                if (input.size() < maxCharacterLength)
+                    input.append(QString(maxCharacterLength - unformatted.size(), ' '));
+
+                // handle charset type, Latin1 for CHAR
+                qtEncoding = QStringConverter::Latin1;
+            }
+
+            QStringEncoder converter(qtEncoding);
+            QByteArray value = converter.encode(input);
+
             stream.writeRawData(value.constData(), value.size());
             return;
         }
-        // ENUM will also be handled specifically
+        // ENUM will be handled specifically
     }
     jmp:
     stream.writeRawData(reinterpret_cast<const char*>(&value), sizeof(value));
@@ -115,44 +112,36 @@ static void writeTypedData(QDataStream& stream, const QVariant& value, Types::Ch
 {
     using ValueType = typename Types::DTAlias<T>::type;
 
-    if constexpr (T == Types::DataType::Char) {
-        QByteArray rawValue;
-        switch (charset) {
-        case Types::Latin1:
-        {
-            auto toLatin1 = QStringEncoder(QStringEncoder::Latin1);
-            rawValue = toLatin1(value.toString());
-            break;
-        }
-        case Types::Utf8:
-        {
-            auto toUtf8 = QStringEncoder(QStringEncoder::Utf8);
-            rawValue = toUtf8(value.toString());
-            break;
-        }
-        case Types::Utf16:
-        {
-            auto toUtf16 = QStringEncoder(QStringEncoder::Utf16);
-            rawValue = toUtf16(value.toString());
-            break;
-        }
-        case Types::Utf32:
-        {
-            auto toUtf32 = QStringEncoder(QStringEncoder::Utf32);
-            rawValue = toUtf32(value.toString());
-            break;
-        }
-        }
-        if (rawValue.size() < length) {
-            // Fill with trailing spaces
-            rawValue.append(length - rawValue.size(), ' ');
-        } else if (rawValue.size() > length) {
-            // Truncate excess
-            rawValue = rawValue.left(length);
-        }
-        stream.writeRawData(rawValue.data(), length);
-    } else if constexpr (T == Types::DataType::Varchar) {
+    if constexpr (std::is_same_v<ValueType, QString>)
+    {
+        QString input = value.toString();
+        // truncate excedent characters
+        if (input.size() > length)
+            input = input.left(length);
 
+        QStringConverter::Encoding qtEncoding;
+
+        // encode according to text datatype
+        if constexpr (T == Types::DataType::Varchar) {
+            switch (charset) {
+                case Types::Charset::Latin1: qtEncoding = QStringConverter::Latin1; break;
+                case Types::Charset::Utf8: qtEncoding = QStringConverter::Utf8; break;
+                case Types::Charset::Utf16: qtEncoding = QStringConverter::Utf16; break;
+                case Types::Charset::Utf32: qtEncoding = QStringConverter::Utf32; break;
+            }
+        }
+        else if constexpr (T == Types::DataType::Char) {
+            // fill with trailing spaces
+            if (input.size() < length)
+                input.append(QString(length - input.size(), ' '));
+
+            qtEncoding = QStringConverter::Latin1;
+        }
+
+        QStringEncoder converter(qtEncoding);
+        QByteArray byteArray = converter.encode(input);
+
+        stream.writeRawData(byteArray.data(), byteArray.size());
     }
     else {
         ValueType rawValue = value.value<ValueType>();
@@ -166,34 +155,29 @@ static QVariant readTypedData(QDataStream& stream, Types::Charset charset, int l
     using ValueType = typename Types::DTAlias<T>::type;
     ValueType value;
 
-    QByteArray rawValue;
     if constexpr (std::is_same_v<ValueType, QString>) {
+        QByteArray rawValue;
         rawValue.resize(length);
         stream.readRawData(rawValue.data(), length);
-        switch (charset) {
-        case Types::Charset::Latin1:
-        {
-            auto fromLatin1 = QStringDecoder(QStringDecoder::Latin1);
-            value = fromLatin1(rawValue);
-            break;
+
+        QStringConverter::Encoding qtEncoding;
+
+        // decode according to text datatype
+        if constexpr (T == Types::DataType::Varchar) {
+            switch (charset) {
+            case Types::Charset::Latin1: qtEncoding = QStringConverter::Latin1; break;
+            case Types::Charset::Utf8: qtEncoding = QStringConverter::Utf8; break;
+            case Types::Charset::Utf16: qtEncoding = QStringConverter::Utf16; break;
+            case Types::Charset::Utf32: qtEncoding = QStringConverter::Utf32; break;
+            }
         }
-        case Types::Utf8:
-        {
-            auto fromUtf8 = QStringDecoder(QStringDecoder::Utf8);
-            value = fromUtf8(rawValue);
-            break;
+        else if constexpr (T == Types::DataType::Char) {
+            qtEncoding = QStringConverter::Latin1;
         }
-        case Types::Utf16:
-        {
-            auto fromUtf16 = QStringDecoder(QStringDecoder::Utf16);
-            value = fromUtf16(rawValue);
-            break;
-        }
-        case Types::Utf32:
-            auto fromUtf32 = QStringDecoder(QStringDecoder::Utf32);
-            value = fromUtf32(rawValue);
-            break;
-        }
+
+        QStringDecoder converter(qtEncoding);
+        // test here
+        value = converter.decode(rawValue);
     }
     else {
         stream.readRawData(reinterpret_cast<char*>(&value), sizeof(ValueType));
@@ -213,58 +197,64 @@ Core::FLRecord::FLRecord(const QString &relationName, const QStringList &unforma
     QDataStream stream(&data, QIODevice::ReadWrite);
     // Record is created according to the relation's schema specified, but not linked to it
     // no validations of data are made yet
-
-    for (qsizetype i = 0; it != beg; --it, i++)
+    int i = 0;
+    // decrement once to start from last element (2nd pair item is undefined)
+    if (it != beg)
+        --it;
+    while (true)
     {
         switch (it->dataType)
         {
         case Types::DataType::TinyInt:
-            writeTypedData<Types::DataType::TinyInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::TinyInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                     it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::UTinyInt:
-            writeTypedData<Types::DataType::UTinyInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::UTinyInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                      it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::SmallInt:
-            writeTypedData<Types::DataType::SmallInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::SmallInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                      it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::USmallInt:
-            writeTypedData<Types::DataType::USmallInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::USmallInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                       it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Int:
-            writeTypedData<Types::DataType::Int>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::Int>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                 it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::UInt:
-            writeTypedData<Types::DataType::UInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::UInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                  it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::BigInt:
-            writeTypedData<Types::DataType::BigInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::BigInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                    it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::UBigInt:
-            writeTypedData<Types::DataType::UBigInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::UBigInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                     it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Float:
-            writeTypedData<Types::DataType::Float>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::Float>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                   it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Double:
-            writeTypedData<Types::DataType::Double>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::Double>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                    it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Bool:
-            writeTypedData<Types::DataType::Bool>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::Bool>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                  it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Enum:
         {
-            QStringList enumValues = it->columnType.split(',');
+            // discard "enum()" and only extract the values
+            static QRegularExpression regex("\\(([^)]+)\\)");
+            QRegularExpressionMatch match = regex.match(it->columnType);
+            QStringList enumValues = match.captured(1).split(',');
             quint8 value;
             // allows 256 enum types, check that enumValues size doesn't exceed
             // this number when creating the relation
@@ -275,17 +265,25 @@ Core::FLRecord::FLRecord(const QString &relationName, const QStringList &unforma
             break;
         }
         case Types::DataType::Char:
-            writeTypedData<Types::DataType::Char>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            writeTypedData<Types::DataType::Char>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                  it->maxCharacterLength, relation->autoIncrement);
             break;
         case Types::DataType::Varchar:
             // Not Allowed, validation already done in interface, no action needed
+            // VARCHAR is not allowed in Fixed-length format and it will be stored differently
+            // in Variable-length records (offsets-lengths)
             // IDEA: if allowed, would it be treated as a char internally?
             break;
         }
         // handle autoIncrement field cases. ignore autoIncrement unformatted fields. Default starts at 1
         if (it->autoIncrement)
             relation->autoIncrement++;
+        // Close loop after processing the first element
+        if (it == beg)
+            break;
+        // For next cycle
+        ++i;
+        --it;
     }
 }
 
@@ -309,9 +307,11 @@ QVariant Core::FLRecord::getField(const QString& relationName, int position) con
     // sum offset
     qsizetype base = 0;
     QVariant result;
-    while (it != beg)
-    {
+    // decrement once to start from last element (2nd pair item is undefined)
+    if (it != beg)
         --it;
+    while (true)
+    {
         if (it->ordinalPosition == position)
         {
             // handle conversion based on type
@@ -354,14 +354,16 @@ QVariant Core::FLRecord::getField(const QString& relationName, int position) con
                 break;
             case Types::DataType::Enum:
             {
-                QStringList enumValues = it->columnType.split(',');
+                static QRegularExpression regex("\\(([^)]+)\\)");
+                QRegularExpressionMatch match = regex.match(it->columnType);
+                QStringList enumValues = match.captured(1).split(',');
                 quint8 value;
                 stream.readRawData(reinterpret_cast<char*>(&value), sizeof(quint8));
                 result = enumValues.at(value);
                 break;
             }
             case Types::DataType::Char:
-                result = readTypedData<Types::DataType::Char>(stream, relation->charset, it->maxByteLength);
+                result = readTypedData<Types::DataType::Char>(stream, relation->charset, it->maxCharacterLength);
                 break;
             case Types::DataType::Varchar:
                 // Not Allowed, validation already done in interface
@@ -401,13 +403,18 @@ QVariant Core::FLRecord::getField(const QString& relationName, int position) con
                 base += sizeof(bool);
                 break;
             case Types::DataType::Char:
-                base += it->maxByteLength;
+                base += it->maxCharacterLength;
                 break;
             case Types::DataType::Varchar:
                 // Not Allowed, validation already done in interface
                 break;
             }
         }
+        // Close loop after processing the first element
+        if (it == beg)
+            break;
+        // For next cycle
+        --it;
     }
     // field not found, invalid position
     return QVariant();
@@ -422,9 +429,11 @@ bool Core::FLRecord::setField(const QString& relationName, int position, const Q
     auto [beg, it] = sc->constFindAttributesFor(relationName);
     // sum offset
     qsizetype base = 0;
-    while (it != beg)
-    {
+    // decrement once to start from last element (2nd pair item is undefined)
+    if (it != beg)
         --it;
+    while (true)
+    {
         if (it->ordinalPosition == position)
         {
             QByteArray value;
@@ -477,7 +486,7 @@ bool Core::FLRecord::setField(const QString& relationName, int position, const Q
                 break;
             }
             case Types::DataType::Char:
-                writeTypedData<Types::DataType::Char>(stream, rawValue, relation->charset);
+                writeTypedData<Types::DataType::Char>(stream, rawValue, relation->charset, it->maxCharacterLength);
                 break;
             case Types::DataType::Varchar:
             {
@@ -521,13 +530,18 @@ bool Core::FLRecord::setField(const QString& relationName, int position, const Q
                 base += sizeof(bool);
                 break;
             case Types::DataType::Char:
-                base += it->maxByteLength;
+                base += it->maxCharacterLength;
                 break;
             case Types::DataType::Varchar:
                 // Not Allowed, validation already done in interface
                 break;
             }
         }
+        // Close loop after processing the first element
+        if (it == beg)
+            break;
+        // For next cycle
+        --it;
     }
     // field not found, invalid position
     return false;
@@ -550,129 +564,130 @@ Core::VLRecord::VLRecord(const QString &relationName, const QStringList &unforma
      // access from the least recently to most recently inserted attribute
     auto [beg, it] = sc->constFindAttributesFor(relationName);
     // init nullBitMap size
-    int size = qCeil(sc->numberOfAttributes(relationName) / 8);
-    nullBitmap.resize(size * 8);
+    int size = qCeil(sc->numberOfAttributes(relationName) / 8.0);
+    nullBitmap = QBitArray(size * 8, true);
 
     QDataStream stream(&data, QIODevice::ReadWrite);
     // Record is created according to the relation's schema specified, but not linked to it
-    // no validations of data are made yet
+    // no validations of data logic are made here
     // consider NULL values are not stored, but marked as NULL in the bitmap
     // where: 1 = null, 0 = not null
     QQueue<QPair<qint16, qint16>> varcharQueue;
 
-    for (qsizetype i = 0; it != beg; --it, i++)
+    int i = 0;
+    // decrement once to start from last element (2nd pair item is undefined)
+    if (it != beg)
+        --it;
+    while (true)
     {
         if (unformatted.at(i) == "" || unformatted.at(i).isEmpty())
         {
             nullBitmap.setBit(i, 1);
             continue;
         }
-        switch (it->dataType)
+        else
         {
-        case Types::DataType::TinyInt:
-        {
-            writeTypedData<Types::DataType::TinyInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
+            switch (it->dataType)
+            {
+            case Types::DataType::TinyInt:
+                writeTypedData<Types::DataType::TinyInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                         it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::UTinyInt:
+                writeTypedData<Types::DataType::UTinyInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                          it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::SmallInt:
+                writeTypedData<Types::DataType::SmallInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                          it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::USmallInt:
+                writeTypedData<Types::DataType::USmallInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                           it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Int:
+                writeTypedData<Types::DataType::Int>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                     it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::UInt:
+                writeTypedData<Types::DataType::UInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                      it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::BigInt:
+                writeTypedData<Types::DataType::BigInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                        it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::UBigInt:
+                writeTypedData<Types::DataType::UBigInt>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                         it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Float:
+                writeTypedData<Types::DataType::Float>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                       it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Double:
+                writeTypedData<Types::DataType::Double>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                        it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Bool:
+                writeTypedData<Types::DataType::Bool>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                      it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Enum:
+            {
+                // discard "enum()" and only extract the values
+                static QRegularExpression regex("\\(([^)]+)\\)");
+                QRegularExpressionMatch match = regex.match(it->columnType);
+                QStringList enumValues = match.captured(1).split(',');
+                quint8 value;
+                // allows 256 enum types, check that enumValues size doesn't exceed
+                // this number when creating the relation
+                for (quint8 j = 0; i < enumValues.size(); ++j)
+                    if (unformatted[i] == enumValues[j])
+                        value = j;
+                stream.writeRawData(reinterpret_cast<const char*>(&value), sizeof(value));
+                break;
+            }
+            case Types::DataType::Char:
+                writeTypedData<Types::DataType::Char>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                      it->maxCharacterLength, relation->autoIncrement);
+                break;
+            case Types::DataType::Varchar:
+            {
+                // save in queue <pos. to modify later , unformatIndex>
+                qint16 offset = static_cast<qint16>(stream.device()->pos());
+                // calculate space/length of data on disk
+                QStringConverter::Encoding qtEncoding;
+                switch (relation->charset) {
+                    case Types::Charset::Latin1: qtEncoding = QStringConverter::Latin1; break;
+                    case Types::Charset::Utf8: qtEncoding = QStringConverter::Utf8; break;
+                    case Types::Charset::Utf16: qtEncoding = QStringConverter::Utf16; break;
+                    case Types::Charset::Utf32: qtEncoding = QStringConverter::Utf32; break;
+                }
+                QStringEncoder converter(qtEncoding);
+                QByteArray rawValue = converter.encode(unformatted[i]);
+
+                qint16 length = static_cast<qint16>(rawValue.size());
+                varcharQueue.enqueue(qMakePair(offset, length));
+                // offset is a temporal value, it will be overwritten later
+                // length value is OK
+                stream << offset << length;
+                break;
+            }
+            }
+            // update bitmap state
             nullBitmap.setBit(i, 0);
-            break;
         }
-        case Types::DataType::UTinyInt:
-        {
-            writeTypedData<Types::DataType::UTinyInt>(stream, unformatted[i], relation->recordFormat,
-                                                     relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::SmallInt:
-        {
-            writeTypedData<Types::DataType::SmallInt>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::USmallInt:
-        {
-            writeTypedData<Types::DataType::USmallInt>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Int:
-        {
-            writeTypedData<Types::DataType::Int>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::UInt:
-        {
-            writeTypedData<Types::DataType::UInt>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::BigInt:
-        {
-            writeTypedData<Types::DataType::BigInt>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::UBigInt:
-        {
-            writeTypedData<Types::DataType::UBigInt>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Float:
-        {
-            writeTypedData<Types::DataType::Float>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Double:
-        {
-            writeTypedData<Types::DataType::Double>(stream, unformatted[i], relation->recordFormat,
-                                                      relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Bool:
-        {
-            writeTypedData<Types::DataType::Double>(stream, unformatted[i], relation->recordFormat,
-                                                    relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Enum:
-        {
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Char:
-        {
-            writeTypedData<Types::DataType::Char>(stream, unformatted[i], relation->recordFormat,
-                                                    relation->charset, it->maxByteLength, relation->autoIncrement);
-            nullBitmap.setBit(i, 0);
-            break;
-        }
-        case Types::DataType::Varchar:
-        {
-            // save in queue <pos. to modify later , unformatIndex>
-            qint16 offset = static_cast<qint16>(data.size());
-            qint16 length = static_cast<qint16>(unformatted.at(i).size());
-            varcharQueue.enqueue(qMakePair(offset, length));
-            // offset is a temporal values, it will be overwritten later
-            // length value is OK
-            stream << offset << length;
-            break;
-        }
-        }
+
         // handle autoIncrement field cases. ignore autoIncrement unformatted fields. Default starts at 1
         if (it->autoIncrement)
             relation->autoIncrement++;
+        // Close loop after processing the first element
+        if (it == beg)
+            break;
+        // For next cycle
+        ++i;
+        --it;
     }
     while (!varcharQueue.empty())
     {
@@ -682,11 +697,13 @@ Core::VLRecord::VLRecord(const QString &relationName, const QStringList &unforma
         qint16 offset = static_cast<qint16>(stream.device()->pos());
         // set the position where to overwrite (varchar fields)
         stream.device()->seek(pair.first);
+        // modify offset pointer previously stored
         stream.writeRawData(reinterpret_cast<const char*>(&offset), sizeof(offset));
-        // come back to the current position of the pointer
+        // set back to the current position of the pointer
         stream.device()->seek(offset);
         // write actual varchar data
-        stream << unformatted.at(pair.second);
+        writeTypedData<Types::DataType::Varchar>(stream, unformatted[i], relation->recordFormat, relation->charset,
+                                                 it->maxCharacterLength, relation->autoIncrement);
     }
 }
 
@@ -717,9 +734,11 @@ QVariant Core::VLRecord::getField(const QString& relationName, int index) const
     // sum offset
     qsizetype base = 0;
     QVariant result;
-    while (it != beg)
-    {
+    // decrement once to start from last element (2nd pair item is undefined)
+    if (it != beg)
         --it;
+    while (true)
+    {
         if (it->ordinalPosition == index)
         {
             if (this->nullBitmap.testBit(index) == true)
@@ -769,7 +788,9 @@ QVariant Core::VLRecord::getField(const QString& relationName, int index) const
                     break;
                 case Types::DataType::Enum:
                 {
-                    QStringList enumValues = it->columnType.split(',');
+                    static QRegularExpression regex("\\(([^)]+)\\)");
+                    QRegularExpressionMatch match = regex.match(it->columnType);
+                    QStringList enumValues = match.captured(1).split(',');
                     quint8 value;
                     stream.readRawData(reinterpret_cast<char*>(&value), sizeof(quint8));
                     result = enumValues.at(value);
@@ -784,7 +805,6 @@ QVariant Core::VLRecord::getField(const QString& relationName, int index) const
                     QDataStream ss(rawValue);
                     qint16 offset, length;
                     ss >> offset >> length;
-                    QByteArray value = data.mid(offset, length);
                     // move stream pointer
                     stream.device()->seek(offset);
                     result = readTypedData<Types::DataType::Varchar>(stream, relation->charset, length);
@@ -841,6 +861,11 @@ QVariant Core::VLRecord::getField(const QString& relationName, int index) const
                 }
             }
         }
+        // Close loop after processing the first element
+        if (it == beg)
+            break;
+        // For next cycle
+        --it;
     }
     // invalid position
     return QVariant();

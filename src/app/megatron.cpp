@@ -182,6 +182,9 @@ void Megatron::createTable()
         case Types::Return::ParseError:
             QMessageBox::warning(this, "Error", tr("Data File: \"%1\" could not be parsed correctly.").arg(response.dataPath));
             return;
+        case Types::Return::RuntimeError:
+            QMessageBox::warning(this, "Error", "Unknown Error.");
+            return;
         }
     }
 }

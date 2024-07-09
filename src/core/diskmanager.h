@@ -8,7 +8,7 @@
 #include <QObject>
 #include <QBitArray>
 #include <QByteArray>
-#include <QPointer>
+#include <QSharedPointer>
 #include <QVariant>
 #include <QtMath>
 
@@ -18,7 +18,7 @@ namespace Core
 {
     // number of blocks to be added to a fileNode
     // every time it's full/near full
-    extern qsizetype autoGrowthFactor;
+    extern qsizetype AutoGrowthFactor;
 
     // Global Information about number of file-nodes/groups,
     // it also records changes that take place as the filesystem is used
@@ -49,7 +49,8 @@ namespace Core
     {
         // each cylinder has the same number of sectors
         int sectorsPerCylinder;
-        // number of fileNodes in this cylinder
+        // number of fileNodes in this cylinder, redundant value
+        // (a fileNode's blocks can be scattered across multiple cylinders)
         int numFileNodes;
 
         friend QDataStream& operator<<(QDataStream& out, const SuperBlock& superBlock) {
@@ -70,9 +71,9 @@ namespace Core
         Q_OBJECT
     public:
         static DiskManager& getInstance(QSharedPointer<Storage::DiskController> control = nullptr,
-                                           QString storageFile = QString())
+                                           QString storageFile = QString(), bool firstInit = false)
         {
-            static DiskManager singleton(control, storageFile);
+            static DiskManager singleton(control, storageFile, firstInit);
             return singleton;
         }
 
@@ -84,7 +85,7 @@ namespace Core
         void deallocateBlock(int);
         Core::FileNode allocateFileNode(int fileSize = Storage::blockSize);
         void deallocateFileNode(Core::FileNode&);
-        bool autogrowFileNode(Core::FileNode&);
+        bool autogrowFileNode(Core::FileNode&, int&);
         float fragmentationLevel(const QBitArray&);
 
         quint64 newFileGroup(Types::FileOrganization fo, quint64 fileSize = Storage::blockSize);
@@ -97,7 +98,7 @@ namespace Core
 
     private:
         DiskManager(QSharedPointer<Storage::DiskController> control = nullptr,
-                       QString storageFile = QString());
+                       QString storageFile = QString(), bool firstInit = false);
         QSharedPointer<Storage::DiskController> controller;
 
         SummaryInformationBlock sib;
@@ -114,7 +115,7 @@ namespace Core
 
     struct FileNode
     {
-        FileNode() = default;
+        FileNode() { id = -1; size = 0; };
 
         // fileNode ID
         int id;
@@ -122,15 +123,16 @@ namespace Core
         int size;
         // disk-block addresses
         QList<int> blocks;
-        // location
-        int cylinderGroup;
+        // since a fileNode can be fragmented across multiple cylinders
+        // not implemented at the moment, it can be calculated but it's costly
+        // QList<int> cylinders;
 
         friend QDataStream& operator<<(QDataStream& out, const FileNode& node) {
-            out << node.size << node.blocks;
+            out << node.id << node.size << node.blocks;
             return out;
         }
         friend QDataStream& operator>>(QDataStream& in, FileNode& node) {
-            in >> node.size >> node.blocks;
+            in >> node.id >> node.size >> node.blocks;
             return in;
         }
     };
@@ -140,16 +142,15 @@ namespace Core
         SuperBlock superBlock;
         int cylinderId;
         float fragmentation;
-        QHash<int, FileNode> fileNodes;    // QList<FileNode> / QMap<int, FileNode>
         // Free/Allocated block map (per cylinder)
         QBitArray blockMap;
 
         friend QDataStream& operator<<(QDataStream& out, const CylinderGroup& cg) {
-            out << cg.superBlock << cg.cylinderId << cg.fragmentation << cg.fileNodes << cg.blockMap;
+            out << cg.superBlock << cg.cylinderId << cg.fragmentation << cg.blockMap;
             return out;
         }
         friend QDataStream& operator>>(QDataStream& in, CylinderGroup& cg) {
-            in >> cg.superBlock >> cg.cylinderId >> cg.fragmentation >> cg.fileNodes >> cg.blockMap;
+            in >> cg.superBlock >> cg.cylinderId >> cg.fragmentation >> cg.blockMap;
             return in;
         }
     };

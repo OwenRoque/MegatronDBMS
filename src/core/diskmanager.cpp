@@ -1,9 +1,9 @@
 #include "diskmanager.h"
 #include <cmath>
 
-qsizetype Core::autoGrowthFactor = 2;
+qsizetype Core::AutoGrowthFactor = 2;
 
-Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, QString storageFile)
+Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, QString storageFile, bool firstInit)
     : controller(control), storageFile(storageFile)
 {
     // Optional: register metatypes for signal/slot funcionality
@@ -30,7 +30,6 @@ Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, 
             .superBlock = sb,
             .cylinderId = i,
             .fragmentation = 0.0f,
-            .fileNodes = QHash<int, FileNode>(),
             // 1 = free, 0 = allocated
             .blockMap = QBitArray(blocksPerCylinder, 1)
         };
@@ -45,15 +44,17 @@ Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, 
     };
 
     // Store default values at startup on disk (.bin file)
-    QFile file(storageFile);
-    if (file.open(QIODevice::WriteOnly))
-    {
-        QDataStream out(&file);
-        out << sib;
-        out << cylinderGroups;
-        out << currCylinderPos;
-        out << fileGroups;
-        file.close();
+    if (firstInit) {
+        QFile file(storageFile);
+        if (file.open(QIODevice::WriteOnly))
+        {
+            QDataStream out(&file);
+            out << sib;
+            out << cylinderGroups;
+            out << currCylinderPos;
+            out << fileGroups;
+            file.close();
+        }
     }
 }
 
@@ -79,7 +80,7 @@ int Core::DiskManager::allocateBlock()
     QPair<int, int> smallestLeftmostGroup;
     for (qsizetype i = 0; i < cylinderGroups.size(); ++i)
     {
-        CylinderGroup current = cylinderGroups.at(currCylinderPos);
+        CylinderGroup& current = cylinderGroups[currCylinderPos];
         int nFreeBlocks = current.blockMap.count(true);
         if (nFreeBlocks == 0)
         {
@@ -105,6 +106,7 @@ int Core::DiskManager::allocateBlock()
         return blockAddress;
     }
     qDebug() << "The disk is full, no space for more block allocations.";
+    // return invalid block address
     return blockAddress;
 }
 
@@ -118,21 +120,22 @@ void Core::DiskManager::deallocateBlock(int blockAddress)
     this->writeBlock(blockAddress, target);
 }
 
-// Optimized for new Relation from File (bulk data insert to disk)
 Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
 {
     Core::FileNode node;
     // autogrow when allocating for the first time
-    int nDataBlocks = qCeil(fileSize / Storage::blockSize) + autoGrowthFactor;
+    int nDataBlocks = qCeil(fileSize / (float)Storage::blockSize) + AutoGrowthFactor;
     node.size = nDataBlocks * Storage::blockSize;
-    QList<int> blockAddresses(nDataBlocks, -1);
+    QList<int> blockAddresses;
+    blockAddresses.reserve(nDataBlocks);
 
     int blocksNeeded = nDataBlocks;
     int startCylinderPos = currCylinderPos;
+    QList<int> cylindersUsed;
 
     while (blocksNeeded > 0)
     {
-        CylinderGroup current = cylinderGroups.at(currCylinderPos);
+        CylinderGroup& current = cylinderGroups[currCylinderPos];
         if (current.fragmentation <= 0.95f)
         // Allocating blocks as long as the current cylinder has space left (only if fragmentation level isn't too high)
         // if they're not enough, the rest will be allocated in next cylinder
@@ -142,6 +145,13 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
             for (const auto& group : groups)
             {
                 int blocksToAllocate = std::min(blocksNeeded, group.second);
+
+                // add to cylindersUsed if there's space to alloc.
+                if (blocksToAllocate != 0) {
+                    cylindersUsed.append(currCylinderPos);
+                    // (some or all) data of this FileNode will be stored in this cylinder
+                    current.superBlock.numFileNodes++;
+                }
 
                 for (int i = 0; i < blocksToAllocate; ++i)
                 {
@@ -162,18 +172,21 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
         // move to next cylinder when:
         // - current cylinder has a high fragmentation level
         // - current cylinder has no more free space, but there are still more blocks left to allocate
-        currCylinderPos = (currCylinderPos + 1) % cylinderGroups.size();
-        // if no cylinder had fragmentation level lower than .95
-        if (currCylinderPos == startCylinderPos)
-        {
-            qDebug() << "FileNode not allocated. There's no space left on disk.";
-            node.blocks = blockAddresses;
-            return node;
+        if (blocksNeeded != 0) {
+            currCylinderPos = (currCylinderPos + 1) % cylinderGroups.size();
+            // if no cylinder had fragmentation level lower than .95
+            // went through all the cylinders of the disk
+            if (currCylinderPos == startCylinderPos)
+            {
+                qDebug() << "FileNode not allocated. There's no space left on disk.";
+                // return invalid FileNode
+                return Core::FileNode();
+            }
         }
     }
     // success case
-    // Update fragmentation levels
-    for (qsizetype i = 0; i < cylinderGroups.size(); ++i)
+    // Update fragmentation levels, only on cylinders where blocks were allocated
+    for (const int i : cylindersUsed)
     {
         CylinderGroup& current = cylinderGroups[i];
         current.fragmentation = fragmentationLevel(current.blockMap);
@@ -200,39 +213,46 @@ void Core::DiskManager::deallocateFileNode(Core::FileNode& node)
         // some blocks might not be located in the cylinderGroup defined in the FileNode:
         // - After a node growth, block allocation
         int spc = cylinderGroups.at(currCylinderPos).superBlock.sectorsPerCylinder;
-        int cylinderGroup = qFloor(b/spc);
+        int cylinderGroup = qFloor(b / (float)spc);
         cylinders.insert(cylinderGroup);
         int relativeBlockNumber = b - (cylinderGroup * spc);
         // mark is as free in the corresponding blockMap
-        auto current = cylinderGroups.at(cylinderGroup);
+        CylinderGroup& current = cylinderGroups[cylinderGroup];
         current.blockMap.setBit(relativeBlockNumber, 1);
     }
     // recalculate cylinder fragmentation
     for (const int c : cylinders)
     {
-        auto current = cylinderGroups.at(c);
+        CylinderGroup& current = cylinderGroups[c];
         current.fragmentation = fragmentationLevel(current.blockMap);
-        // update global counters
-        sib.numFileNodes--;
+        // Reduce redundant entry/fileNode
         current.superBlock.numFileNodes--;
     }
+    // update global counters
+    sib.numFileNodes--;
+    // not decrementing fileNodeIdCounter
     // reset fileNode
     node.id = -1;
-    node.cylinderGroup = -1;
     node.blocks.clear();
     node.size = 0;
 }
 
-bool Core::DiskManager::autogrowFileNode(Core::FileNode &node)
+bool Core::DiskManager::autogrowFileNode(Core::FileNode &node, int& startIndex)
 {
     // allocate more constant space every time the FileNode is full/near full.
     // This technique reduces the frequency of allocations and can improve efficiency.
-    QList<int> extraBlocks(Core::autoGrowthFactor, -1);
-    for (int i = 0; i < Core::autoGrowthFactor; ++i)
+    QList<int> extraBlocks;
+    extraBlocks.reserve(Core::AutoGrowthFactor);
+    for (int i = 0; i < Core::AutoGrowthFactor; ++i)
         extraBlocks.append(this->allocateBlock());
-    if (extraBlocks.first() == -1)
+    // in case allocation of extra space fails
+    if (extraBlocks.indexOf(-1) != -1)
         return false;
+    // set startIndex value
+    startIndex = node.blocks.size();
+    // update node properties
     node.blocks.append(extraBlocks);
+    node.size += Storage::blockSize * Core::AutoGrowthFactor;
     return true;
 }
 
@@ -261,6 +281,8 @@ quint64 Core::DiskManager::newFileGroup(Types::FileOrganization fo, quint64 file
     {
     case Types::FileOrganization::Heap:
     {
+        // pointers or shared-pointers are not necessary, since they will be inserted in a hash data-structure,
+        // accessed by iterators/const-iterators, which hold the reference to them
         HeapGroup heap;
         // allocating data blocks first
         heap.data = allocateFileNode(fileSize);

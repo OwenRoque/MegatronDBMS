@@ -140,6 +140,18 @@ QByteArray Core::UnpackedDataPage::findRecord(const quint16 &slot_id)
         return QByteArray(this->recordSize, '\0');
 }
 
+quint8 Core::UnpackedDataPage::getFreeSpace() const
+{
+    // get number of empty slots
+    int emptySlots = this->bitmap.count(false);
+    int freeBytes = emptySlots * this->recordSize;
+    // calculate free space fraction (n/256)
+    // return n
+    double frac = static_cast<double>(freeBytes) / static_cast<double>(Storage::blockSize);
+    return static_cast<int>(frac * 256);
+
+}
+
 QSharedPointer<Storage::Block> Core::UnpackedDataPage::toBlock()
 {
     QSharedPointer<Storage::Block> block;
@@ -289,11 +301,21 @@ bool Core::SlottedPage::deleteRecord(const quint16 &slot_id)
     return true;
 }
 
-// TODO
+// TODO:
 QByteArray Core::SlottedPage::findRecord(const quint16 &slot_id)
 {
     QString ret = "find " + QString::number(slot_id) + " record.";
     return ret.toUtf8();
+}
+
+quint8 Core::SlottedPage::getFreeSpace() const
+{
+    // calculate freeBytes with freeSpacePointer
+    int freeBytes = this->freeSpacePointer.second - this->freeSpacePointer.first;
+    // calculate free space fraction (n/256)
+    // return n
+    double frac = static_cast<double>(freeBytes) / static_cast<double>(Storage::blockSize);
+    return static_cast<int>(frac * 256);
 }
 
 QSharedPointer<Storage::Block> Core::SlottedPage::toBlock()

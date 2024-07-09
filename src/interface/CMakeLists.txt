@@ -18,6 +18,8 @@ qt_add_library(interface STATIC
     customcomboboxdelegate.h
     customindexcombobox.h
     indexform.h indexform.cpp indexform.ui
+    diskload.h diskload.cpp diskload.ui
+
 
 
 )

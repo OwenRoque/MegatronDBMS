@@ -11,6 +11,13 @@ Storage::DiskController::DiskController(QSharedPointer<Disk> d) : disk(d)
         allSurfaces.push_back(disk->getPlatter(i)->getSurface(0));
         allSurfaces.push_back(disk->getPlatter(i)->getSurface(1));
     }
+    // No. of cylinders = No. of tracks
+    nCylinders = disk->getNTracks();
+    // Each read/write head has its corresponding surface
+    nHeads = allSurfaces.size();
+    // No. of sectors per Track
+    nSectors = disk->getNSectors();
+
     arm = Storage::ArmAssembly(allSurfaces);
 }
 
@@ -84,8 +91,8 @@ void Storage::DiskController::readSector(int c, int h, int s, char* buffer)
         stream.skipRawData(16);
         // IMPORTANT: data should not have less size than 'len' arg.
         QByteArray data(Storage::sectorSize, '\0');
-        int bytesRead = stream.readRawData(data.data(), Storage::sectorSize);
-        qDebug() << "Bytes leidos del sector: " << bytesRead;
+        /*int bytesRead = */stream.readRawData(data.data(), Storage::sectorSize);
+        // qDebug() << "Bytes leidos del sector: " << bytesRead;
         std::memcpy(buffer, data.constData(), sectorSize);
         sector.close();
     }

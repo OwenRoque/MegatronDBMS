@@ -16,6 +16,7 @@ namespace Core
         virtual Types::Return insertRecord() = 0;
         virtual Types::Return bulkInsertRecords(const QString&) = 0;
         virtual Types::Return deleteRecord() = 0;
+        virtual bool autogrow() = 0;
 
     protected:
         QString relationName;

@@ -2,8 +2,8 @@
 
 void Core::FreeSpaceMap::insert(quint64 blockId, quint8 freeSpaceFraction)
 {
-    if (freeSpaceFraction > 9) {
-        throw std::invalid_argument("Free space fraction must be a value between 0 and 8.");
+    if (freeSpaceFraction > 255) {
+        throw std::invalid_argument("Free space fraction must be a value between 0 and 255.");
     }
     maxHeap.push(QPair(blockId, freeSpaceFraction));
 }
@@ -55,9 +55,7 @@ void Core::FreeSpaceMap::printHeap() const
     }
 }
 
-size_t Core::FreeSpaceMap::getHeapSize() const
+size_t Core::FreeSpaceMap::size() const
 {
-    size_t elementSize = sizeof(QPair);
-    size_t numElements = maxHeap.size();
-    return elementSize * numElements;
+    return maxHeap.size();
 }

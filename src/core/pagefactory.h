@@ -9,6 +9,7 @@ namespace Core
     class PageFactory
     {
     public:
+        virtual ~PageFactory() = default;
         virtual QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) const = 0;
         virtual QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId) const = 0;
         virtual QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId, int recordSize) const = 0;
