@@ -4,17 +4,17 @@
 
 Core::Page::Page(QSharedPointer<Storage::Block> block)
 {
-    id = block->getBlockId();
+    id = block->getId();
 }
 
-Core::Page::Page(int pageId)
+Core::Page::Page(page_id_t pageId)
 {
     id = pageId;
 }
 
 Core::Page::~Page() {}
 
-int Core::Page::getId() const
+Core::page_id_t Core::Page::getId() const
 {
     return id;
 }
@@ -22,11 +22,11 @@ int Core::Page::getId() const
 Core::DataPage::DataPage(QSharedPointer<Storage::Block> block)
     : Core::Page(block) {}
 
-Core::DataPage::DataPage(int pageId) : Core::Page(pageId) {}
+Core::DataPage::DataPage(page_id_t pageId) : Core::Page(pageId) {}
 
 /// Unpacked Page Implementation (for fixed-legth records)
 
-Core::UnpackedDataPage::UnpackedDataPage(QSharedPointer<Storage::Block> block/*, int recordSize = 0*/)
+Core::UnpackedDataPage::UnpackedDataPage(QSharedPointer<Storage::Block> block)
     : Core::DataPage(block)
 {
     // retrieve block data
@@ -115,7 +115,7 @@ bool Core::UnpackedDataPage::addRecord(const Record &record)
     return false;
 }
 
-bool Core::UnpackedDataPage::deleteRecord(const quint16 &slot_id)
+bool Core::UnpackedDataPage::deleteRecord(const slot_id_t &slot_id)
 {
     // handle invalid slot_id
     if (slot_id >= this->numberOfSlots)
@@ -127,7 +127,7 @@ bool Core::UnpackedDataPage::deleteRecord(const quint16 &slot_id)
     return true;
 }
 
-QByteArray Core::UnpackedDataPage::findRecord(const quint16 &slot_id)
+QByteArray Core::UnpackedDataPage::findRecord(const slot_id_t &slot_id)
 {
     // handle invalid slot_id
     if (slot_id >= this->numberOfSlots)
@@ -154,7 +154,7 @@ quint8 Core::UnpackedDataPage::getFreeSpace() const
 
 QSharedPointer<Storage::Block> Core::UnpackedDataPage::toBlock()
 {
-    QSharedPointer<Storage::Block> block;
+    QSharedPointer<Storage::Block> block(new Storage::Block());
     // set block id = page id
     block->setId(this->getId());
 
@@ -272,7 +272,7 @@ bool Core::SlottedPage::addRecord(const Record &record)
     }
 }
 
-bool Core::SlottedPage::deleteRecord(const quint16 &slot_id)
+bool Core::SlottedPage::deleteRecord(const slot_id_t &slot_id)
 {
     // handle invalid slot_id
     if (slot_id >= this->numberOfSlots)
@@ -302,7 +302,7 @@ bool Core::SlottedPage::deleteRecord(const quint16 &slot_id)
 }
 
 // TODO:
-QByteArray Core::SlottedPage::findRecord(const quint16 &slot_id)
+QByteArray Core::SlottedPage::findRecord(const slot_id_t &slot_id)
 {
     QString ret = "find " + QString::number(slot_id) + " record.";
     return ret.toUtf8();
@@ -320,7 +320,7 @@ quint8 Core::SlottedPage::getFreeSpace() const
 
 QSharedPointer<Storage::Block> Core::SlottedPage::toBlock()
 {
-    QSharedPointer<Storage::Block> block;
+    QSharedPointer<Storage::Block> block(new Storage::Block());
     // set block id = page id
     block->setId(this->getId());
 
@@ -343,12 +343,9 @@ QSharedPointer<Storage::Block> Core::SlottedPage::toBlock()
     for (int i = 0; i < slotArray.size(); ++i) {
         stream << this->slotArray[i].offset << this->slotArray[i].length;
     }
-    // stream << this->freeSpacePointer;
     stream << this->freeSpacePointer.first << this->freeSpacePointer.second;
     stream << this->numberOfSlots;
 
     block->setData(data);
     return block;
 }
-
-

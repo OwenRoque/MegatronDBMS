@@ -10,25 +10,29 @@
 
 namespace Core
 {
+    using page_id_t = qint32;
+    using slot_id_t = qint16;
+
+    static constexpr qint32 INVALID_PAGE_ID = -1;
 
     class Page
     {
     public:
         Page(QSharedPointer<Storage::Block> block);
-        Page(int);
+        Page(page_id_t);
         virtual ~Page() = 0;
-        int getId() const;
+        page_id_t getId() const;
         virtual QSharedPointer<Storage::Block> toBlock() = 0;
 
     protected:
-        int id;
+        page_id_t id;
 
     };
 
     struct rowId
     {
-        quint16 page_id;
-        quint16 slot_id;
+        page_id_t p_id;
+        slot_id_t s_id;
     };
 
     struct slotEntry
@@ -51,8 +55,8 @@ namespace Core
         DataPage(QSharedPointer<Storage::Block> block);
         DataPage(int);
         virtual bool addRecord(const Core::Record&) = 0;
-        virtual bool deleteRecord(const quint16&) = 0;
-        virtual QByteArray findRecord(const quint16&) = 0;
+        virtual bool deleteRecord(const slot_id_t&) = 0;
+        virtual QByteArray findRecord(const slot_id_t&) = 0;
         virtual quint8 getFreeSpace() const = 0;
 
     };
@@ -63,8 +67,8 @@ namespace Core
         UnpackedDataPage(QSharedPointer<Storage::Block> block);
         UnpackedDataPage(int, int);
         bool addRecord(const Core::Record&) override;
-        bool deleteRecord(const quint16&) override;
-        QByteArray findRecord(const quint16&) override;
+        bool deleteRecord(const slot_id_t&) override;
+        QByteArray findRecord(const slot_id_t&) override;
         quint8 getFreeSpace() const override;
         QSharedPointer<Storage::Block> toBlock() override;
 
@@ -82,8 +86,8 @@ namespace Core
         SlottedPage(QSharedPointer<Storage::Block> block);
         SlottedPage(int);
         bool addRecord(const Core::Record&) override;
-        bool deleteRecord(const quint16&) override;
-        QByteArray findRecord(const quint16&) override;
+        bool deleteRecord(const slot_id_t&) override;
+        QByteArray findRecord(const slot_id_t&) override;
         quint8 getFreeSpace() const override;
         QSharedPointer<Storage::Block> toBlock() override;
 
@@ -92,6 +96,18 @@ namespace Core
         QPair<quint16, quint16> freeSpacePointer;
         QList<slotEntry> slotArray;
         QByteArray data;
+
+    };
+
+    class FreePage : public Page
+    {
+    public:
+        FreePage(page_id_t id) : Page(id) {}
+        QSharedPointer<Storage::Block> toBlock() override {
+            // Since this is a free page, it simply returns a null pointer or an empty implementation,
+            // although it is expected this page type will never be written to disk
+            return QSharedPointer<Storage::Block>(nullptr);
+        }
 
     };
 

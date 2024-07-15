@@ -6,16 +6,18 @@
 
 namespace Storage
 {
+    using block_id_t = qint32;
+
     class Block : public Utility
     {
     public:
         Block() = default;
         ~Block() = default;
-        Block(int blockAddress, const QByteArray &data);
+        Block(block_id_t blockId, const QByteArray &data);
         // Utility interface
         Space getSpace() const override;
         // getters
-        int getBlockId() const;
+        block_id_t getId() const;
         struct Header
         {
             // data = d (fixed/variable),
@@ -34,13 +36,14 @@ namespace Storage
         Header getHeader() const;
         QByteArray getData() const;
         QSharedPointer<Sector> getSector(int);
-        void setId(int);
+        void setId(block_id_t);
         void setHeader(const Header::BlockType&);
         void setData(const QByteArray&);
         void setSectors(QList<QSharedPointer<Sector>> sec);
 
     private:
-        int blockId;
+        block_id_t id;
+        qint64 address;
         Header header;
         QByteArray data;
         QList<QSharedPointer<Sector>> sectors;

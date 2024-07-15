@@ -8,14 +8,14 @@
 #include <QTabWidget>
 #include <QInputDialog>
 
-Megatron::Megatron(QWidget *parent, QString diskPath, QSharedPointer<Storage::DiskController> control,
-                   bool firstInit)
+Megatron::Megatron(const QString& diskPath, QSharedPointer<Storage::DiskController> control, const QString& replacerPolicy,
+                   int bufferSize, bool firstInit, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::Megatron)
 {
     ui->setupUi(this);
     QString storagePath(diskPath + "/" + "storage.bin");
     QString catalogPath(diskPath + "/" + "catalog.bin");
-    database = Core::Database(control, storagePath, catalogPath, firstInit);
+    database = Core::Database(control, storagePath, catalogPath, replacerPolicy, bufferSize, firstInit);
 
     tabWidget = ui->tabWidget;
     tabWidget->setMovable(true);
@@ -226,6 +226,18 @@ void Megatron::switchTabs(int index)
         ui->actionRunSelected->setEnabled(false);
 }
 
+void Megatron::onClose()
+{
+    Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
+    Core::DiskManager* dm = &Core::DiskManager::getInstance();
+    // save system catalog, disk manager metadata
+    // this process is very expensive, it should be done a few times only
+    // in this case, it's done after exiting the application
+    sc->saveToDisk();
+    dm->saveToDisk();
+    this->close();
+}
+
 void Megatron::createActions()
 {
     ui->actionNewTable->setShortcut(QKeySequence::New);
@@ -239,7 +251,7 @@ void Megatron::createActions()
 
     connect(tabWidget, &QTabWidget::currentChanged, this, &Megatron::switchTabs);
 
-    connect(ui->actionExit, &QAction::triggered, this, &Megatron::close);
+    connect(ui->actionExit, &QAction::triggered, this, &Megatron::onClose);
     ui->actionExit->setShortcut(tr("Esc"));
 
     connect(ui->actionNewQuery, &QAction::triggered, this, &Megatron::createQuery);

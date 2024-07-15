@@ -2,16 +2,27 @@
 #include "heapfile.h"
 
 Core::Database::Database(QSharedPointer<Storage::DiskController> dc, const QString& storagePath,
-                          const QString& catalogPath, bool firstInit)
+                          const QString& catalogPath, const QString& replacerPolicy, int bufferSize, bool firstInit)
 {
     dm = &DiskManager::getInstance(dc, storagePath, firstInit);
     sc = &SystemCatalog::getInstance(catalogPath, firstInit);
+    Types::ReplacementPolicy policy;
+    if (replacerPolicy == "LRU") {
+        policy = Types::ReplacementPolicy::LRUPolicy;
+    } else if (replacerPolicy == "MRU") {
+        policy = Types::ReplacementPolicy::MRUPolicy;
+    } else if (replacerPolicy == "Clock") {
+        policy = Types::ReplacementPolicy::ClockPolicy;
+    } else if (replacerPolicy == "Default") {
+        policy = Types::ReplacementPolicy::Default;
+    }
+    bm = &Memory::BufferManager::getInstance(bufferSize, policy);
     // get systemCatalog data from disk, only if it's not first initialization
     if (firstInit == false)
     {
         dm->readFromDisk();
         sc->readFromDisk();
-        // init & fill file List
+        // TODO: how to init & refill QList<QSharedPointer<File>> relations;
     }
 }
 
@@ -26,7 +37,7 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     quint64 autoIncValue = response.autoIncrementFieldExists();
     auto relation = sc->insertRelation({
         .relationName = response.relationName,
-        .numberOfAttributes = 0, /*static_cast<quint8>(response.attributes.size()),*/
+        .numberOfAttributes = 0,
         .fileOrganization = response.fileOrg,
         .recordFormat = response.recFormat,
         .charset = response.charset,

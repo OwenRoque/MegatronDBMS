@@ -1,7 +1,8 @@
 #include "heapfile.h"
 #include "systemcatalog.h"
 #include "diskmanager.h"
-#include "page.h"
+#include <buffermanager.h>
+#include "pagefactory.h"
 #include "record.h"
 
 Core::HeapFile::HeapFile(const QString& relationName) : Core::File(relationName)
@@ -106,6 +107,8 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
     Core::DiskManager* dm = &Core::DiskManager::getInstance();
     // no of blocks left to process
     int nBlocks = freeSpace.size();
+
+    Memory::BufferManager* bm = &Memory::BufferManager::getInstance();
     while (!recordList.empty())
     {
         // when there are no more pages with free space available for
@@ -121,23 +124,16 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
                 return Types::Return::RuntimeError;
         }
         // retrieve block with more free space (pops it from queue)
-        quint64 target = freeSpace.getBlockWithMoreFreeSpace();
-        // read block from disk, store its contents in the byte array
-        QByteArray blockContent;
-        dm->readBlock(target, blockContent);
-        // convert byte array to Block instance
-        QSharedPointer<Storage::Block> block = QSharedPointer<Storage::Block>::create(target, blockContent);
-        // set block header according to datapage required
-        // & construct Page equivalent to Block
-        // Core::DataPageFactory factory;
+        block_id_t target = freeSpace.getBlockWithMoreFreeSpace();
+        // buffer pool request: fetch operation (add target page to buffer before inserting)
+        QSharedPointer<Memory::Frame> frame = bm->fetchPage(target);
+        // access the frame which holds the desired page, we don't know which type it is
+        QSharedPointer<Core::Page> page = frame->getPage();
+        // dataPage object, this is the type we need to store data
         QSharedPointer<Core::DataPage> targetPage;
-        bool newPageFlag = false;
+
         if (relation->recordFormat == Types::RecordFormat::Fixed)
         {
-            if (block->getHeader().type == Storage::Block::Header::Free) {
-                block->setHeader(Storage::Block::Header::DataFixed);
-                newPageFlag = true;
-            }
             // calculate record size for fixed-length page
             auto [beg, it] = sc->constFindAttributesFor(relationName);
             int recordLength = 0;
@@ -184,24 +180,29 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
                     break;
                 --it;
             }
-            // create page: completely new one or with data
-            if (newPageFlag)
-                targetPage = QSharedPointer<UnpackedDataPage>::create(block->getBlockId(), recordLength);
-            else
-                targetPage = QSharedPointer<UnpackedDataPage>::create(block);
+            // create new data page: replace free page object
+            if (qSharedPointerDynamicCast<FreePage>(page)) {
+                targetPage = Core::PageFactory::createUnpackedPage(page->getId(), recordLength).staticCast<Core::DataPage>();
+                frame->setPage(targetPage);
+            }
+            else {
+                // cast the page to a DataPage, this is the one we need to store data
+                targetPage = page.staticCast<Core::DataPage>();
+            }
         }
         else if (relation->recordFormat == Types::RecordFormat::Variable)
         {
-            if (block->getHeader().type == Storage::Block::Header::Free) {
-                block->setHeader(Storage::Block::Header::DataVariable);
-                newPageFlag = true;
+            // create new data page: replace free page object
+            if (qSharedPointerDynamicCast<FreePage>(page)) {
+                targetPage = Core::PageFactory::createSlottedPage(page->getId()).staticCast<Core::DataPage>();
+                frame->setPage(targetPage);
             }
-            // create page: completely new one or with data
-            if (newPageFlag)
-                targetPage = QSharedPointer<SlottedPage>::create(block->getBlockId());
-            else
-                targetPage = QSharedPointer<SlottedPage>::create(block);
+            else {
+                // cast the page to a DataPage, this is the one we need to store data
+                targetPage = page.staticCast<Core::DataPage>();
+            }
         }
+
         // insert Record object into target page
         bool insertOk = false;
         do {          
@@ -215,21 +216,21 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
                 recordList.prepend(rec);
         }
         while (!recordList.isEmpty() && insertOk);
+        // mark current frame as dirty, since changes were made
+        frame->setDirty(true);
         // update page free space, after no more operations are made on it
         freeSpace.insert(targetPage->getId(), targetPage->getFreeSpace());
         // decrease no of blocks processed
         nBlocks--;
     }
-    // when BufferManager is full, write to disk evicted pages
-    // TODO: add target page to buffer before inserting
 
-    sc->saveToDisk();
-    dm->saveToDisk();
-
+    // save data to disk
+    bm->flushAllPages();
 
     return Types::Return::Success;
     // TODO: validate record data according to constraints - relation.bulkInsert method
     // only insert the valid ones, reject the invalid
+    // will be done with the help of index structure
 }
 
 Types::Return Core::HeapFile::deleteRecord()

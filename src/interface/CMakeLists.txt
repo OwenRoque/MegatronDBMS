@@ -19,16 +19,18 @@ qt_add_library(interface STATIC
     customindexcombobox.h
     indexform.h indexform.cpp indexform.ui
     diskload.h diskload.cpp diskload.ui
+    bufferinit.h bufferinit.cpp bufferinit.ui
 
 
 
 )
 
 target_link_libraries(interface PRIVATE
-    core
     storage
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
+    PUBLIC
+    core
 )
 
 target_include_directories(interface INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} ${Qt6Widgets_INCLUDE_DIRS})

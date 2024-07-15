@@ -1,8 +1,11 @@
 #include "block.h"
+#include "disk.h"
 
-Storage::Block::Block(int blockAddress, const QByteArray &data)
-    : blockId(blockAddress)
+Storage::Block::Block(Storage::block_id_t blockId, const QByteArray &data)
+    : id(blockId)
 {
+    // block address (LBA value will change in intervals, depending on blockFactor)
+    this->address = blockId * Storage::blockFactor;
     QDataStream in(data);
     in >> header.type;
     in >> this->data;
@@ -22,9 +25,9 @@ Utility::Space Storage::Block::getSpace() const
     return b;
 }
 
-int Storage::Block::getBlockId() const
+Storage::block_id_t Storage::Block::getId() const
 {
-    return blockId;
+    return id;
 }
 
 Storage::Block::Header Storage::Block::getHeader() const
@@ -42,9 +45,10 @@ QSharedPointer<Storage::Sector> Storage::Block::getSector(int index)
     return sectors.at(index);
 }
 
-void Storage::Block::setId(int id)
+void Storage::Block::setId(Storage::block_id_t id)
 {
-    this->blockId = id;
+    this->id = id;
+    this->address = id * Storage::blockFactor;
 }
 
 void Storage::Block::setHeader(const Header::BlockType& type)

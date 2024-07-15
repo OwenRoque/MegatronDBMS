@@ -63,7 +63,7 @@ void Storage::DiskController::readBlock(int block, QByteArray& buffer)
     buffer.resize(blockSize, '\0');
 
     // Calculate logic sectors of block (call readSecLog)
-    for (int i = 0; i < blockFactor; i++, block++)
+    for (int i = 0; i < Storage::blockFactor; i++, block++)
     {
         readSecLog(block, buffer.data() + (i * sectorSize));
     }
@@ -102,7 +102,7 @@ void Storage::DiskController::readSector(int c, int h, int s, char* buffer)
 void Storage::DiskController::writeBlock(int block, const QByteArray& data)
 {
     // Calculate logic sectors of block (call writeSecLog)
-    for (int i = 0; i < blockFactor; i++, block++)
+    for (int i = 0; i < Storage::blockFactor; i++, block++)
     {
         QByteArray chunk = data.mid(i * sectorSize, sectorSize);
         writeSecLog(block, chunk.constData(), chunk.size());
@@ -133,12 +133,6 @@ void Storage::DiskController::writeSector(int c, int h, int s, const char* data,
         stream << std::get<0>(chs) << std::get<1>(chs) << std::get<2>(chs) << dataSize;
         stream.writeRawData(data, dataSize);
 
-        // unnecessary since data must not have remaining bytes
-        // int remainingSize = sectorSize - dataSize;
-        // if (remainingSize > 0) {
-        //     QByteArray padding(remainingSize, '\0');
-        //     stream.writeRawData(padding.constData(), remainingSize);
-        // }
         sector.close();
     }
 }

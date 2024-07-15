@@ -29,6 +29,6 @@ void DiskLoad::onOkButtonClicked()
 
 void DiskLoad::onNewDiskButtonClicked()
 {
-    // emit newDiskRequested();
+    // send custom signal
     done(2);
 }

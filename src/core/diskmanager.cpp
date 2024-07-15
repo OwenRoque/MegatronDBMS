@@ -58,25 +58,32 @@ Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, 
     }
 }
 
-QSharedPointer<Storage::Block> Core::DiskManager::readBlock(int blockAddress, QByteArray &buffer)
+qint64 Core::DiskManager::toPhysicalAddress(int blockId)
 {
-    controller->readBlock(blockAddress, buffer);
-    return QSharedPointer<Storage::Block>(new Storage::Block(blockAddress, buffer));
+    return blockId * Storage::blockFactor;
 }
 
-void Core::DiskManager::writeBlock(int blockAddress, QSharedPointer<Storage::Block> block)
+QSharedPointer<Storage::Block> Core::DiskManager::readBlock(int pageId)
+{
+    QByteArray buffer;
+    // convert identifier to physical address
+    controller->readBlock(toPhysicalAddress(pageId), buffer);
+    return QSharedPointer<Storage::Block>(new Storage::Block(pageId, buffer));
+}
+
+void Core::DiskManager::writeBlock(int pageId, QSharedPointer<Storage::Block> block)
 {
     QByteArray data;
     Storage::Block::Header h = block->getHeader();
     data.append(h.type);
     data.append(block->getData());
-    controller->writeBlock(blockAddress, data);
+    controller->writeBlock(toPhysicalAddress(pageId), data);
 }
 
 // For overflow pages, new File datapages
 int Core::DiskManager::allocateBlock()
 {
-    int blockAddress = -1;
+    int blockId = -1;
     QPair<int, int> smallestLeftmostGroup;
     for (qsizetype i = 0; i < cylinderGroups.size(); ++i)
     {
@@ -98,26 +105,24 @@ int Core::DiskManager::allocateBlock()
                 smallestLeftmostGroup = group;
         }
         // get relative block number from cylinder
-        int relativeBlockAddress = smallestLeftmostGroup.first;
+        int relativeBlockId = smallestLeftmostGroup.first;
         // update blockmap
-        current.blockMap.setBit(relativeBlockAddress, 0);
-        // convert relative block number to absolute (LBA number)
-        blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + relativeBlockAddress;
-        return blockAddress;
+        current.blockMap.setBit(relativeBlockId, 0);
+        // convert relative block number to absolute
+        blockId = (currCylinderPos * (current.superBlock.sectorsPerCylinder) + relativeBlockId); // * Storage::BlockFactor
+        return blockId;
     }
     qDebug() << "The disk is full, no space for more block allocations.";
-    // return invalid block address
-    return blockAddress;
+    // return invalid block id
+    return blockId;
 }
 
-void Core::DiskManager::deallocateBlock(int blockAddress)
+void Core::DiskManager::deallocateBlock(int blockId)
 {
     // Clear block's data, set it as free
-    QByteArray data;
-    QSharedPointer<Storage::Block> target = this->readBlock(blockAddress, data);
+    QSharedPointer<Storage::Block> target(new Storage::Block(blockId, QByteArray()));
     target->setHeader(Storage::Block::Header::BlockType::Free);
-    target->setData(QByteArray());
-    this->writeBlock(blockAddress, target);
+    this->writeBlock(toPhysicalAddress(blockId), target);
 }
 
 Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
@@ -126,8 +131,8 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
     // autogrow when allocating for the first time
     int nDataBlocks = qCeil(fileSize / (float)Storage::blockSize) + AutoGrowthFactor;
     node.size = nDataBlocks * Storage::blockSize;
-    QList<int> blockAddresses;
-    blockAddresses.reserve(nDataBlocks);
+    QList<int> blockIdentifiers;
+    blockIdentifiers.reserve(nDataBlocks);
 
     int blocksNeeded = nDataBlocks;
     int startCylinderPos = currCylinderPos;
@@ -155,10 +160,10 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
 
                 for (int i = 0; i < blocksToAllocate; ++i)
                 {
-                    // convert relative block number to absolute (LBA number)
-                    int blockAddress = currCylinderPos * (current.superBlock.sectorsPerCylinder) + (group.first + i);
+                    // convert relative block number to absolute
+                    int blockId = currCylinderPos * (current.superBlock.sectorsPerCylinder) + (group.first + i);
                     // add to blockArray
-                    blockAddresses.append(blockAddress);
+                    blockIdentifiers.append(blockId);
                     // update blockmap
                     current.blockMap.setBit(group.first + i, 0);
                 }
@@ -192,7 +197,7 @@ Core::FileNode Core::DiskManager::allocateFileNode(int fileSize)
         current.fragmentation = fragmentationLevel(current.blockMap);
     }
     // update global counters
-    node.blocks = blockAddresses;
+    node.blocks = blockIdentifiers;
     node.id = sib.fileNodeIdCounter;
     sib.fileNodeIdCounter++;
     sib.numFileNodes++;

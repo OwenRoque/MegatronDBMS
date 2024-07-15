@@ -16,9 +16,6 @@ public:
     ~DiskLoad();
     QString getSelectedDisk() const;
 
-// signals:
-//     void newDiskRequested();
-
 private slots:
     void onOkButtonClicked();
     void onNewDiskButtonClicked();

@@ -1,6 +1,6 @@
 #include "freespacemap.h"
 
-void Core::FreeSpaceMap::insert(quint64 blockId, quint8 freeSpaceFraction)
+void Core::FreeSpaceMap::insert(block_id_t blockId, quint8 freeSpaceFraction)
 {
     if (freeSpaceFraction > 255) {
         throw std::invalid_argument("Free space fraction must be a value between 0 and 255.");
@@ -8,7 +8,7 @@ void Core::FreeSpaceMap::insert(quint64 blockId, quint8 freeSpaceFraction)
     maxHeap.push(QPair(blockId, freeSpaceFraction));
 }
 
-quint64 Core::FreeSpaceMap::getBlockWithMoreFreeSpace()
+Storage::block_id_t Core::FreeSpaceMap::getBlockWithMoreFreeSpace()
 {
     if (maxHeap.empty()) {
         throw std::runtime_error("FreeSpaceMap: maxHeap is empty.");

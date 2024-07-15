@@ -9,51 +9,35 @@ namespace Core
     class PageFactory
     {
     public:
-        virtual ~PageFactory() = default;
-        virtual QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) const = 0;
-        virtual QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId) const = 0;
-        virtual QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId, int recordSize) const = 0;
+        // constructor for non-empty pages (data pages or index pages)
+        // TODO: add index pages standart constructors here
+        static QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) {
+            auto header = block->getHeader();
+            switch (header.type) {
+            case Storage::Block::Header::DataFixed:
+                return QSharedPointer<Page>(new UnpackedDataPage(block));
+            case Storage::Block::Header::DataVariable:
+                return QSharedPointer<Page>(new SlottedPage(block));
+            case Storage::Block::Header::Free:
+                return QSharedPointer<Page>(new FreePage(block->getId()));
+            default:
+                throw std::invalid_argument("Tipo de bloque no soportado");
+            }
+        }
+
+        // constructor for empty variable-length page
+        static QSharedPointer<Page> createSlottedPage(int pageId) {
+            return QSharedPointer<SlottedPage>::create(pageId);
+        }
+
+        // constructor for empty fixed-length page
+        static QSharedPointer<Page> createUnpackedPage(int pageId, int recordSize) {
+            return QSharedPointer<UnpackedDataPage>::create(pageId, recordSize);
+        }
+
+        // add more constructor for index pages here...
     };
 
-    class DataPageFactory : public PageFactory
-    {
-    public:
-        QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) const override {
-            auto header = block->getHeader();
-            if (header.type == Storage::Block::Header::DataFixed) {
-                return QSharedPointer<UnpackedDataPage>::create(block);
-            } else if (header.type == Storage::Block::Header::DataVariable) {
-                return QSharedPointer<SlottedPage>::create(block);
-            }
-            return nullptr;
-        }
-        QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId) const override {
-            if (type == Storage::Block::Header::DataVariable) {
-                return QSharedPointer<SlottedPage>::create(pageId);
-            }
-            return nullptr;
-        }
-        QSharedPointer<Page> createPage(Storage::Block::Header::BlockType type, int pageId, int recordSize) const override {
-            if (type == Storage::Block::Header::DataFixed) {
-                return QSharedPointer<UnpackedDataPage>::create(pageId, recordSize);
-            }
-            return nullptr;
-        }
-    };
-
-    // define IndexPageFactory for index pages
-    class IndexPageFactory : public PageFactory {
-    public:
-        QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) const override {
-            auto header = block->getHeader();
-            // if (header.type == Storage::Block::Header::IndexInternal) {
-            //     return QSharedPointer<IndexInternalPage>::create(block);
-            // } else if (header.type == Storage::Block::Header::IndexLeaf) {
-            //     return QSharedPointer<IndexLeafPage>::create(block);
-            // }
-            return nullptr;
-        }
-    };
 }
 
 #endif // PAGEFACTORY_H

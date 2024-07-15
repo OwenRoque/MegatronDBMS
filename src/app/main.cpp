@@ -1,6 +1,7 @@
 #include "megatron.h"
 #include <diskinit.h>
 #include <diskload.h>
+#include <bufferinit.h>
 #include <diskcontroller.h>
 
 #include <QApplication>
@@ -21,7 +22,9 @@ int main(int argc, char *argv[])
     QFileInfoList listFiles = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries);
     QString diskPath;
     QSharedPointer<Storage::Disk> disk;
-    // find disk
+
+    /// Disk Initialization
+
     // If there's no disk previously created, create a new one
     bool firstInit = true;
     if (listFiles.isEmpty())
@@ -40,17 +43,7 @@ int main(int argc, char *argv[])
         QStringList disks;
         for (const QFileInfo& info : listFiles) disks.append(info.fileName());
         DiskLoad loadDialog(disks);
-        // QObject::connect(&loadDialog, &DiskLoad::newDiskRequested, &loadDialog, [&]() {
-        //     // exit code for this case is rejected
-        //     firstInit = true;
-        //     DiskInit initDialog;
-        //     if (initDialog.exec() == QDialog::Accepted) {
-        //         diskPath = disksPath + "/" + initDialog.name;
-        //         disk = QSharedPointer<Storage::Disk>(new Storage::Disk(diskPath, initDialog.nPlatters, initDialog.nTracks, initDialog.nSectors,
-        //                                                                initDialog.sectorSize, initDialog.blockSize, firstInit));
-        //     }
-        // });
-        // if (/*ok && */!name.isEmpty())
+        // result cases
         auto ret = loadDialog.exec();
         if (ret == QDialog::Accepted)
         {
@@ -80,9 +73,16 @@ int main(int argc, char *argv[])
     }
     QSharedPointer<Storage::DiskController> controller(new Storage::DiskController(disk));
 
-    // init buffer pool here
+    /// Buffer Manager Initialization
+    // buffer configuration isn't stored, but set every time the dbms is opened (at startup)
+    BufferInit buffer;
+    if (buffer.exec() != QDialog::Accepted) {
+        return 0;
+    }
+    int bufferSize = buffer.getBufferSize();
+    QString replacerPolicy = buffer.getPolicy();
 
-    Megatron w(nullptr, diskPath, controller, firstInit);
+    Megatron w(diskPath, controller, replacerPolicy, bufferSize, firstInit);
     w.show();
     return a.exec();
 }

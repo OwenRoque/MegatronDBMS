@@ -11,11 +11,14 @@ qt_add_library(core STATIC
     pagefactory.h
     freespacemap.h freespacemap.cpp
 
+
 )
 
 target_link_libraries(core PRIVATE
     storage
     Qt${QT_VERSION_MAJOR}::Core
+    PUBLIC
+    memory
 )
 
 target_include_directories(core INTERFACE

@@ -25,9 +25,8 @@ class Megatron : public QMainWindow
     Q_OBJECT
 
 public:
-    Megatron(QWidget *parent = nullptr, QString diskPath = QString(),
-             QSharedPointer<Storage::DiskController> control = nullptr,
-             bool firstInit = false);
+    Megatron(const QString& diskPath = QString(), QSharedPointer<Storage::DiskController> control = nullptr,
+             const QString& replacerPolicy = QString(), int bufferSize = 10, bool firstInit = false, QWidget *parent = nullptr);
     ~Megatron();
 
 signals:
@@ -41,6 +40,7 @@ private slots:
     void createQuery();
     void deleteTabRequested(int);
     void switchTabs(int);
+    void onClose();
 
 private:
     Ui::Megatron *ui;

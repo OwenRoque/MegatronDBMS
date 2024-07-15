@@ -3,6 +3,7 @@
 
 #include <diskcontroller.h>
 #include <block.h>
+#include "page.h"
 #include "megatron_types.h"
 
 #include <QObject>
@@ -77,7 +78,8 @@ namespace Core
             return singleton;
         }
 
-        QSharedPointer<Storage::Block> readBlock(int, QByteArray&);
+        // read & write blocks/pages methods
+        QSharedPointer<Storage::Block> readBlock(int);
         void writeBlock(int, QSharedPointer<Storage::Block>);
 
         // storage policy: Data Organization by Cylinders
@@ -106,6 +108,8 @@ namespace Core
         int currCylinderPos;
         QHash<int, QVariant> fileGroups;
         QString storageFile;
+        // converts a block/page id to a valid physical address on disk
+        qint64 toPhysicalAddress(int);
 
         Q_DISABLE_COPY(DiskManager);
 

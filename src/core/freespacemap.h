@@ -7,13 +7,16 @@
 #include <QDebug>
 #include <QByteArray>
 #include <QIODevice>
+#include <block.h>
 
 namespace Core
 {
+    using block_id_t = Storage::block_id_t;
+
     class FreeSpaceMap
     {
     public:
-        using QPair = std::pair<qint64, quint8>;
+        using QPair = std::pair<block_id_t, quint8>;
         struct Compare {
             bool operator()(const QPair &a, const QPair &b) {
                 // max-heap based on free-space fraction
@@ -23,8 +26,8 @@ namespace Core
 
         FreeSpaceMap() = default;
 
-        void insert(quint64 blockId, quint8 freeSpaceFraction);
-        quint64 getBlockWithMoreFreeSpace();
+        void insert(block_id_t blockId, quint8 freeSpaceFraction);
+        block_id_t getBlockWithMoreFreeSpace();
         QByteArray toBytes() const;
         void fromBytes(const QByteArray& fsm);
         void printHeap() const;

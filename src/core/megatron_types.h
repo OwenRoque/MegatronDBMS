@@ -100,6 +100,16 @@ namespace Types
     };
     Q_ENUM_NS(Order)
 
+    enum ReplacementPolicy : quint8
+    {
+        Default,
+        LRUPolicy,
+        MRUPolicy,
+        ClockPolicy
+        // LRUKPolicy in the future
+    };
+    Q_ENUM_NS(ReplacementPolicy)
+
     // template specializations
 
     template <DataType T>

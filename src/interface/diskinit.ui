@@ -87,7 +87,7 @@
           <enum>QAbstractSpinBox::PlusMinus</enum>
          </property>
          <property name="specialValueText">
-          <string>default</string>
+          <string>4</string>
          </property>
          <property name="accelerated">
           <bool>false</bool>
@@ -134,7 +134,7 @@
           <enum>QAbstractSpinBox::PlusMinus</enum>
          </property>
          <property name="specialValueText">
-          <string>default</string>
+          <string>8</string>
          </property>
          <property name="minimum">
           <number>8</number>
@@ -175,7 +175,7 @@
           <enum>QAbstractSpinBox::PlusMinus</enum>
          </property>
          <property name="specialValueText">
-          <string>default</string>
+          <string>16</string>
          </property>
          <property name="minimum">
           <number>16</number>
@@ -216,7 +216,7 @@
           <bool>false</bool>
          </property>
          <property name="specialValueText">
-          <string>default</string>
+          <string>512b</string>
          </property>
          <property name="accelerated">
           <bool>true</bool>
@@ -270,11 +270,17 @@
        </item>
        <item row="5" column="1">
         <widget class="QComboBox" name="blockSizeComboBox">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+           <italic>true</italic>
+          </font>
+         </property>
          <property name="insertPolicy">
           <enum>QComboBox::InsertAtBottom</enum>
          </property>
          <property name="sizeAdjustPolicy">
-          <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+          <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
          </property>
          <property name="iconSize">
           <size>
