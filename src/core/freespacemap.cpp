@@ -1,5 +1,13 @@
 #include "freespacemap.h"
 
+Core::FreeSpaceMap::FreeSpaceMap(const QList<int> &init_list)
+{
+    // initializer list with blockIds of empty blocks
+    for (const int i : init_list) {
+        this->insert(i, 255);
+    }
+}
+
 void Core::FreeSpaceMap::insert(block_id_t blockId, quint8 freeSpaceFraction)
 {
     if (freeSpaceFraction > 255) {
@@ -37,7 +45,7 @@ void Core::FreeSpaceMap::fromBytes(const QByteArray &fsm)
 {
     QDataStream stream(fsm);
 
-    qint64 blockId;
+    block_id_t blockId;
     quint8 freeSpaceFraction;
     while (!stream.atEnd()) {
         stream >> blockId >> freeSpaceFraction;
@@ -59,3 +67,17 @@ size_t Core::FreeSpaceMap::size() const
 {
     return maxHeap.size();
 }
+
+// QDataStream& operator<<(QDataStream& out, const Core::FreeSpaceMap& fsm)
+// {
+//     QByteArray byteArray = fsm.toBytes();
+//     out << byteArray;
+//     return out;
+// }
+
+// QDataStream& operator>>(QDataStream& in, Core::FreeSpaceMap& fsm) {
+//     QByteArray byteArray;
+//     in >> byteArray;
+//     fsm.fromBytes(byteArray);
+//     return in;
+// }

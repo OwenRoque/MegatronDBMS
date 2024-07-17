@@ -17,11 +17,45 @@ Core::Database::Database(QSharedPointer<Storage::DiskController> dc, const QStri
         policy = Types::ReplacementPolicy::Default;
     }
     bm = &Memory::BufferManager::getInstance(bufferSize, policy);
-    // get systemCatalog data from disk, only if it's not first initialization
+
+    // get systemCatalog, diskManager data from disk, only if it's not first initialization
     if (firstInit == false)
     {
+        // restore data
         dm->readFromDisk();
         sc->readFromDisk();
+        // refill relations in the database
+        auto relations = sc->listRelationKeys();
+        for (const auto& rel : relations) {
+            if (rel == "MEGATRON.RELATIONS" ||
+                rel == "MEGATRON.ATTRIBUTES" ||
+                rel == "MEGATRON.CHARSETS" ||
+                rel == "MEGATRON.INDEXES")
+                // skip catalog tables, since they're not stored in disk manager
+                continue;
+            // get access to its metadata/schema
+            auto relation = sc->findRelation(rel);
+            // find its location in disk manager
+            QVariant fileGroupVariant = dm->locateFileGroup(relation->location);
+            if (!fileGroupVariant.isValid()) {
+                qWarning() << "Corrupted File Group!";
+                // throw an exception
+                throw std::runtime_error("Corrupted File Group!");
+            }
+            // handle Qvariant conversions to FileGroups
+            if (fileGroupVariant.canConvert<HeapGroup>()) {
+                this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName, firstInit));
+            }
+            else if (fileGroupVariant.canConvert<SequentialGroup>()) {
+                // TODO:
+            }
+            else if (fileGroupVariant.canConvert<BPlusGroup>()) {
+                // TODO:
+            }
+            else if (fileGroupVariant.canConvert<HashGroup>()) {
+                // TODO:
+            }
+        }
         // TODO: how to init & refill QList<QSharedPointer<File>> relations;
     }
 }
@@ -135,7 +169,7 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
         switch (response.fileOrg)
         {
         case Types::FileOrganization::Heap:
-            file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName));
+            file = this->relations.emplaceBack(QSharedPointer<Core::HeapFile>::create(relation->relationName, true));
             break;
         // TODO
         case Types::FileOrganization::Sequential:
@@ -158,7 +192,5 @@ Types::Return Core::Database::createRelation(Core::RelationInput response)
     // TODO: implement SaveToDisk in each FileOrganization
     // only when pressed 'save' button, CTRL+S
 
-    dm->saveToDisk();
-    sc->saveToDisk();
     return Types::Return::Success;
 }

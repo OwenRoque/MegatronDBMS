@@ -5,32 +5,34 @@
 #include "pagefactory.h"
 #include "record.h"
 
-Core::HeapFile::HeapFile(const QString& relationName) : Core::File(relationName)
+Core::HeapFile::HeapFile(const QString& relationName, bool firstInit) : Core::File(relationName)
 {
     // retrieve relation's metadata
-    Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
-    auto relation = sc->findRelation(relationName);
-    Core::DiskManager* dm = &Core::DiskManager::getInstance();
+    // Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
+    // auto relation = sc->findRelation(relationName);
+    // Core::DiskManager* dm = &Core::DiskManager::getInstance();
 
-    // initialize free space map, by retrieving relations' storage info
-    QList<int> dataBlocks;
+    // QSharedPointer<Core::HeapGroup> heapGroup = this->getHeapGroup();
 
-    QVariant fileGroupVariant = dm->locateFileGroup(relation->location);
-    if (!fileGroupVariant.isValid()) {
-        qWarning() << "File group not found!";
-        // throw an exception
-        throw std::runtime_error("File group not found!");
+    // QVariant fileGroupVariant = dm->locateFileGroup(relation->location);
+    // if (!fileGroupVariant.isValid()) {
+    //     qWarning() << "Corrupted File Group!";
+    //     // throw an exception
+    //     throw std::runtime_error("Corrupted File Group!");
+    // }
+    // if (!fileGroupVariant.canConvert<HeapGroup>()) {
+    //     qWarning() << "File group is not a HeapGroup!";
+    //     throw std::runtime_error("File group is not a HeapGroup!");
+    // }
+    // HeapGroup heapGroup = fileGroupVariant.value<HeapGroup>();
+
+    // this->freeSpace = &heapGroup.freeSpace; /*QSharedPointer<FreeSpaceMap>(&heapGroup.freeSpace);*/
+
+    // if this heap file is new: TEST
+    if (!firstInit) {
+        QSharedPointer<FreeSpaceMap> freeSpace = this->getFreeSpaceMap();
+        freeSpace->printHeap();
     }
-    if (!fileGroupVariant.canConvert<HeapGroup>()) {
-        qWarning() << "File group is not a HeapGroup!";
-        throw std::runtime_error("File group is not a HeapGroup!");
-    }
-    HeapGroup heapGroup = fileGroupVariant.value<HeapGroup>();
-    dataBlocks = heapGroup.data.blocks;
-
-    for (const int i : dataBlocks)
-        // Default fs fraction, 255/256 free space
-        freeSpace.insert(i , 255);
 }
 
 Types::Return Core::HeapFile::insertRecord()
@@ -41,6 +43,8 @@ Types::Return Core::HeapFile::insertRecord()
 
 Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
 {
+    QSharedPointer<FreeSpaceMap> freeSpace = this->getFreeSpaceMap();
+
     // parse CSV File algorithm
     auto parseCSVLine = [](const QString& line) {
         QStringList fields;
@@ -104,9 +108,8 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
     }
 
     // add records to file
-    Core::DiskManager* dm = &Core::DiskManager::getInstance();
     // no of blocks left to process
-    int nBlocks = freeSpace.size();
+    int nBlocks = freeSpace->size();
 
     Memory::BufferManager* bm = &Memory::BufferManager::getInstance();
     while (!recordList.empty())
@@ -124,7 +127,7 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
                 return Types::Return::RuntimeError;
         }
         // retrieve block with more free space (pops it from queue)
-        block_id_t target = freeSpace.getBlockWithMoreFreeSpace();
+        block_id_t target = freeSpace->getBlockWithMoreFreeSpace();
         // buffer pool request: fetch operation (add target page to buffer before inserting)
         QSharedPointer<Memory::Frame> frame = bm->fetchPage(target);
         // access the frame which holds the desired page, we don't know which type it is
@@ -216,10 +219,10 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
                 recordList.prepend(rec);
         }
         while (!recordList.isEmpty() && insertOk);
-        // mark current frame as dirty, since changes were made
-        frame->setDirty(true);
+        // unpin page & mark as dirty, since changes were made and the page is no longer needed
+        bm->unpinPage(targetPage->getId(), true);
         // update page free space, after no more operations are made on it
-        freeSpace.insert(targetPage->getId(), targetPage->getFreeSpace());
+        freeSpace->insert(targetPage->getId(), targetPage->getFreeSpace());
         // decrease no of blocks processed
         nBlocks--;
     }
@@ -246,13 +249,15 @@ bool Core::HeapFile::autogrow()
 
     QVariant fileGroupVariant = dm->locateFileGroup(relation->location);
     HeapGroup heapGroup = fileGroupVariant.value<HeapGroup>();
+    QSharedPointer<Core::FreeSpaceMap> freeSpace = this->getFreeSpaceMap();
+
     int start = 0;
     bool ret = dm->autogrowFileNode(heapGroup.data, start);
     // update free-space-map, add newly added block addresses
     if (ret) {
         // blocks allocated are inserted at the end of the list
         for (; start < heapGroup.data.blocks.size(); ++start)
-            freeSpace.insert(heapGroup.data.blocks[start], 255);
+            freeSpace->insert(heapGroup.data.blocks[start], 255);
     }
     return ret;
 }

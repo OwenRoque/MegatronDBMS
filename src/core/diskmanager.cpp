@@ -292,7 +292,8 @@ quint64 Core::DiskManager::newFileGroup(Types::FileOrganization fo, quint64 file
         // allocating data blocks first
         heap.data = allocateFileNode(fileSize);
         // 9 bytes is the size of a FreeSpaceMap entry
-        heap.freeSpace = allocateFileNode(9 * heap.data.blocks.size());
+        // heap.freeSpace = allocateFileNode(9 * heap.data.blocks.size());
+        heap.freeSpace = QSharedPointer<FreeSpaceMap>(new FreeSpaceMap(heap.data.blocks));
 
         // fileGroupId from Information Block
         FileGroupLocation = sib.fileGroupIdCounter;
@@ -335,7 +336,7 @@ bool Core::DiskManager::deleteFileGroup(int fileGroupId)
     if (filegroup.value().canConvert<Core::HeapGroup>())
     {
         HeapGroup heap = filegroup.value().value<Core::HeapGroup>();
-        deallocateFileNode(heap.freeSpace);
+        // deallocateFileNode(heap.freeSpace);
         deallocateFileNode(heap.data);
         // update global counters
         sib.numFileGroups--;
@@ -434,4 +435,9 @@ bool Core::DiskManager::readFromDisk()
         return true;
     }
     return false;
+}
+
+QHash<int, QVariant> Core::DiskManager::getFileGroups()
+{
+    return fileGroups;
 }

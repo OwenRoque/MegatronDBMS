@@ -3,7 +3,7 @@
 
 #include <diskcontroller.h>
 #include <block.h>
-#include "page.h"
+#include "freespacemap.h"
 #include "megatron_types.h"
 
 #include <QObject>
@@ -97,6 +97,7 @@ namespace Core
         // persistence
         bool saveToDisk();
         bool readFromDisk();
+        QHash<int, QVariant> getFileGroups();
 
     private:
         DiskManager(QSharedPointer<Storage::DiskController> control = nullptr,
@@ -130,6 +131,8 @@ namespace Core
         // since a fileNode can be fragmented across multiple cylinders
         // not implemented at the moment, it can be calculated but it's costly
         // QList<int> cylinders;
+
+        bool isEmpty() { return size == 0; }
 
         friend QDataStream& operator<<(QDataStream& out, const FileNode& node) {
             out << node.id << node.size << node.blocks;
@@ -168,17 +171,33 @@ namespace Core
         ~HeapGroup() = default;
 
         Types::FileOrganization type = Types::FileOrganization::Heap;
-        FileNode freeSpace;
+        QSharedPointer<FreeSpaceMap> freeSpace;
         FileNode data;
         QList<FileNode> indexes;
 
         friend QDataStream& operator<<(QDataStream& out, const HeapGroup& group) {
-            out << group.type << group.freeSpace << group.data << group.indexes;
+            out << group.type;
+
+            // serialization of fsm
+            QByteArray freeSpaceData = group.freeSpace->toBytes();
+
+            out << freeSpaceData;
+            out << group.data << group.indexes;
             return out;
         }
 
         friend QDataStream& operator>>(QDataStream& in, HeapGroup& group) {
-            in >> group.type >> group.freeSpace >> group.data >> group.indexes;
+            in >> group.type;
+
+            // deserialization of fsm
+            QByteArray freeSpaceData;
+            in >> freeSpaceData;
+
+            // realloc space in memory for fsm
+            group.freeSpace = QSharedPointer<FreeSpaceMap>::create();
+            group.freeSpace->fromBytes(freeSpaceData);
+
+            in >> group.data >> group.indexes;
             return in;
         }
 
@@ -257,5 +276,6 @@ Q_DECLARE_METATYPE(Core::HeapGroup)
 Q_DECLARE_METATYPE(Core::SequentialGroup)
 Q_DECLARE_METATYPE(Core::HashGroup)
 Q_DECLARE_METATYPE(Core::BPlusGroup)
+Q_DECLARE_METATYPE(Core::FreeSpaceMap)
 
 #endif // DISKMANAGER_H
