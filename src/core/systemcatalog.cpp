@@ -808,7 +808,7 @@ auto Core::SystemCatalog::deleteIndex(const QString &relationName, const QString
     return itemsDeleted;
 }
 
-auto Core::SystemCatalog::findIndexes(const QString &relationName, const QString& attributeName)
+auto Core::SystemCatalog::findIndexes(const QString &relationName, const QString& indexName)
     -> std::pair<QMultiMap<QString, indexMeta>::iterator, QMultiMap<QString, indexMeta>::iterator>
 {
     auto relationIndexes = indexes.equal_range(relationName);
@@ -816,18 +816,18 @@ auto Core::SystemCatalog::findIndexes(const QString &relationName, const QString
     // dummy struct to compare
     indexMeta comparator;
     comparator.relationName = relationName;
-    comparator.attributeName = attributeName;
+    comparator.indexName = indexName;
 
-    auto attributeIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
+    auto keyIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
 
     // if not found
-    if (attributeIndexes.first == relationIndexes.second)
+    if (keyIndexes.first == relationIndexes.second)
         return {indexes.end(), indexes.end()};
     else
-        return attributeIndexes;
+        return keyIndexes;
 }
 
-auto Core::SystemCatalog::constFindIndexes(const QString &relationName, const QString& attributeName) const
+auto Core::SystemCatalog::constFindIndexes(const QString &relationName, const QString& indexName) const
     -> std::pair<QMultiMap<QString, indexMeta>::const_iterator, QMultiMap<QString, indexMeta>::const_iterator>
 {
     auto relationIndexes = indexes.equal_range(relationName);
@@ -835,15 +835,15 @@ auto Core::SystemCatalog::constFindIndexes(const QString &relationName, const QS
     // dummy struct to compare
     indexMeta comparator;
     comparator.relationName = relationName;
-    comparator.attributeName = attributeName;
+    comparator.indexName = indexName;
 
-    auto attributeIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
+    auto keyIndexes = std::equal_range(relationIndexes.first, relationIndexes.second, comparator);
 
     // if not found
-    if (attributeIndexes.first == relationIndexes.second)
+    if (keyIndexes.first == relationIndexes.second)
         return {indexes.cend(), indexes.cend()};
     else
-        return attributeIndexes;
+        return keyIndexes;
 }
 
 auto Core::SystemCatalog::numberOfIndexes(const QString &relationName) const

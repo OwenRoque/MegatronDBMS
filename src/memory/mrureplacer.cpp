@@ -1,27 +1,27 @@
-#include "lrureplacer.h"
+#include "mrureplacer.h"
 
-Memory::LRUReplacer::LRUReplacer(int num_frames) : numFrames(num_frames) {}
+Memory::MRUReplacer::MRUReplacer(int num_frames) : numFrames(num_frames) {}
 
-Memory::LRUReplacer::~LRUReplacer() = default;
+Memory::MRUReplacer::~MRUReplacer() = default;
 
-bool Memory::LRUReplacer::victim(frame_id_t *frame_id)
+bool Memory::MRUReplacer::victim(frame_id_t *frame_id)
 {
     // if no victim page exists
     if (this->size() == 0) {
         return false;
     }
 
-    // pick oldest frame (returns victim frame_id)
-    *frame_id = frames.back();
+    // pick the most recently used frame (returns victim frame_id)
+    *frame_id = frames.front();
     // remove it from victim list
-    frames.pop_back();
+    frames.pop_front();
     // and from the map
     frameMap.remove(*frame_id);
 
     return true;
 }
 
-void Memory::LRUReplacer::pin(frame_id_t frame_id)
+void Memory::MRUReplacer::pin(frame_id_t frame_id)
 {
     // when the frame is not in the frame victim deque, then
     // there's nothing to do
@@ -36,7 +36,7 @@ void Memory::LRUReplacer::pin(frame_id_t frame_id)
     frames.erase(static_cast<QList<frame_id_t>::const_iterator>(it));
 }
 
-void Memory::LRUReplacer::unpin(frame_id_t frame_id)
+void Memory::MRUReplacer::unpin(frame_id_t frame_id)
 {
     // we can't insert a new page if the pool is full
     // we do not reinsert a victim frame if found also
@@ -45,14 +45,12 @@ void Memory::LRUReplacer::unpin(frame_id_t frame_id)
     }
 
     // then, add it to victim list
-    frames.push_front(frame_id);
-    frameMap[frame_id] = frames.begin();
+    frames.push_back(frame_id);
+    frameMap[frame_id] = frames.end() - 1;
 }
 
-size_t Memory::LRUReplacer::size()
+size_t Memory::MRUReplacer::size()
 {
     return frames.size();
 }
-
-
 

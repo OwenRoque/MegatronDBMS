@@ -1,6 +1,6 @@
 #include "frame.h"
 
-/// Frame Interface Implementation
+/// Frame Implementation
 
 Memory::Frame::Frame() : page(nullptr), pinCount(0), dirtyBit(false) {}
 
@@ -39,42 +39,9 @@ void Memory::Frame::decreasePinCount()
     this->pinCount--;
 }
 
-/// LRU Frame Implementation
-
-Memory::LRUFrame::LRUFrame() : Frame() {}
-
-void Memory::LRUFrame::update(const UpdateParams& params)
+void Memory::Frame::update(const UpdateParams& params)
 {
     this->page = params.page;
     this->pinCount = params.pinCount;
     this->dirtyBit = params.dirtyBit;
 }
-
-/// MRU Frame Implementation
-
-Memory::MRUFrame::MRUFrame() : Frame() {}
-
-void Memory::MRUFrame::update(const UpdateParams &params)
-{
-    this->page = params.page;
-    this->pinCount = params.pinCount;
-    this->dirtyBit = params.dirtyBit;
-}
-
-/// CLOCK Frame Implementation
-
-Memory::ClockFrame::ClockFrame() : Frame(), refBit(false) {}
-
-void Memory::ClockFrame::update(const UpdateParams& params)
-{
-    this->page = params.page;
-    this->pinCount = params.pinCount;
-    this->dirtyBit = params.dirtyBit;
-    this->refBit = params.refBit;
-}
-
-// void Memory::LRUKFrame::update(Core::Page *page, int pinCount, bool dirtyBit, const QList<int> &accessHistory)
-// {
-//     Frame::update(page, pinCount, dirtyBit);
-//     this->accessHistory = accessHistory;
-// }

@@ -112,6 +112,21 @@ namespace Core
     };
 
     // index pages TODO:
+    // https://github.com/zhiyiYo/cmu15445-fall2020/blob/4a07c246ba1d1d47e31f4306ff8b7bbda0dbd04e/src/include/storage/page/b_plus_tree_page.h#L23
+    class IndexPage : public virtual Page
+    {
+
+    };
+
+    class InternalIndexPage : public IndexPage
+    {
+
+    };
+
+    class LeafIndexPage : public IndexPage
+    {
+
+    };
 
 }
 

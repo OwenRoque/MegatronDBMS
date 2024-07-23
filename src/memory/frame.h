@@ -24,7 +24,10 @@ namespace Memory
         bool refBit;
     };
 
-    // General Frame Interface
+    /**
+     * @brief The Frame class, works as a Page container & holds
+     * metadata related to it
+     */
     class Frame
     {
     public:
@@ -36,7 +39,7 @@ namespace Memory
         /**
          * @brief Destroys a frame
          */
-        virtual ~Frame() = default;
+        /*virtual*/ ~Frame() = default;
 
         /**
          *  @return the page object this frame holds
@@ -78,7 +81,7 @@ namespace Memory
          * @brief updates frame metadata & content (page)
          * @param params parameter list
          */
-        virtual void update(const UpdateParams& params) = 0;
+        /*virtual*/ void update(const UpdateParams& params)/* = 0*/;
 
     protected:
         // frame's data
@@ -91,65 +94,65 @@ namespace Memory
     };
 
     // LRU Frame: doesn't need any other metadata
-    class LRUFrame : public Frame
-    {
-    public:
-        /**
-         * @brief Constructs a new LRUFrame
-         */
-        LRUFrame();
+    // class LRUFrame : public Frame
+    // {
+    // public:
+    //     /**
+    //      * @brief Constructs a new LRUFrame
+    //      */
+    //     LRUFrame();
 
-        /**
-         * @brief update frame metadata & page
-         * @param page new page to replace
-         * @param pinCount new pin count value
-         * @param dirtyBit default dirty bit state
-         */
-        void update(const UpdateParams& params) override;
+    //     /**
+    //      * @brief update frame metadata & page
+    //      * @param page new page to replace
+    //      * @param pinCount new pin count value
+    //      * @param dirtyBit default dirty bit state
+    //      */
+    //     void update(const UpdateParams& params) override;
 
-    };
+    // };
 
-    // MRU Frame: doesn't need any other metadata
-    class MRUFrame : public Frame
-    {
-    public:
-        /**
-         * @brief Constructs a new MRUFrame
-         */
-        MRUFrame();
+    // // MRU Frame: doesn't need any other metadata
+    // class MRUFrame : public Frame
+    // {
+    // public:
+    //     /**
+    //      * @brief Constructs a new MRUFrame
+    //      */
+    //     MRUFrame();
 
-        /**
-         * @brief update frame metadata & page
-         * @param page new page to replace
-         * @param pinCount new pin count value
-         * @param dirtyBit default dirty bit state
-         */
-        void update(const UpdateParams& params) override;
+    //     /**
+    //      * @brief update frame metadata & page
+    //      * @param page new page to replace
+    //      * @param pinCount new pin count value
+    //      * @param dirtyBit default dirty bit state
+    //      */
+    //     void update(const UpdateParams& params) override;
 
-    };
+    // };
 
-    // Clock Frame: uses reference bit
-    class ClockFrame : public Frame
-    {
-    public:
-        /**
-         * @brief Constructs a new Clock Frame
-         */
-        ClockFrame();
+    // // Clock Frame: uses reference bit
+    // class ClockFrame : public Frame
+    // {
+    // public:
+    //     /**
+    //      * @brief Constructs a new Clock Frame
+    //      */
+    //     ClockFrame();
 
-        /**
-         * @brief update frame metadata & page
-         * @param page new page to replace
-         * @param pinCount new pin count value
-         * @param dirtyBit default dirty bit state
-         * @param refBit new refBit value
-         */
-        void update(const UpdateParams& params) override;
+    //     /**
+    //      * @brief update frame metadata & page
+    //      * @param page new page to replace
+    //      * @param pinCount new pin count value
+    //      * @param dirtyBit default dirty bit state
+    //      * @param refBit new refBit value
+    //      */
+    //     void update(const UpdateParams& params) override;
 
-    private:
-        bool refBit;
+    // private:
+    //     bool refBit;
 
-    };
+    // };
 
     // LRU-K Frame: uses a list to store the history/timestamp access
     // TODO:

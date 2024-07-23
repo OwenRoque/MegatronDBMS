@@ -255,6 +255,7 @@ namespace Core
 
         Types::FileOrganization type = Types::FileOrganization::BPlusTree;
         FileNode data;
+        FileNode clusterIndex;
         // QList<FileNode> indexes;
 
         friend QDataStream& operator<<(QDataStream& out, const BPlusGroup& group) {
@@ -276,6 +277,5 @@ Q_DECLARE_METATYPE(Core::HeapGroup)
 Q_DECLARE_METATYPE(Core::SequentialGroup)
 Q_DECLARE_METATYPE(Core::HashGroup)
 Q_DECLARE_METATYPE(Core::BPlusGroup)
-Q_DECLARE_METATYPE(Core::FreeSpaceMap)
 
 #endif // DISKMANAGER_H

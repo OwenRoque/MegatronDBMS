@@ -1,23 +1,23 @@
-#ifndef LRUREPLACER_H
-#define LRUREPLACER_H
+#ifndef MRUREPLACER_H
+#define MRUREPLACER_H
 
 #include "replacer.h"
 
 namespace Memory
 {
-    class LRUReplacer : public Replacer
+    class MRUReplacer : public Replacer
     {
     public:
         /**
-         * @brief Create a new LRUReplacer.
-         * @param num_frames the maximum number of frames/pages the LRUReplacer will be required to store
+         * @brief Create a new MRUReplacer
+         * @param num_frames the maximum number of frames/pages the MRUReplacer will be required to store
          */
-        explicit LRUReplacer(int num_frames);
+        explicit MRUReplacer(int num_frames);
 
         /**
-         * @brief Destroys the LRUReplacer.
+         * @brief Destroys the MRUReplacer.
          */
-        ~LRUReplacer() override;
+        ~MRUReplacer() override;
 
         /**
          * @brief Remove the victim frame as defined by the replacement policy.
@@ -45,7 +45,7 @@ namespace Memory
         // maximum capacity of frame pool, same as pool size
         size_t numFrames;
         // implement list as a double ended queue to store 'victimizable' frames, with
-        // the descending time of reference from front to back
+        // the ascending time of reference from front to back
         QList<frame_id_t> frames;
         // to fetch the address of a key in the list quickly (find() takes O(N))
         QHash<frame_id_t, QList<frame_id_t>::iterator> frameMap;
@@ -53,4 +53,5 @@ namespace Memory
     };
 }
 
-#endif // LRUREPLACER_H
+
+#endif // MRUREPLACER_H

@@ -7,32 +7,11 @@
 
 Core::HeapFile::HeapFile(const QString& relationName, bool firstInit) : Core::File(relationName)
 {
-    // retrieve relation's metadata
-    // Core::SystemCatalog* sc = &Core::SystemCatalog::getInstance();
-    // auto relation = sc->findRelation(relationName);
-    // Core::DiskManager* dm = &Core::DiskManager::getInstance();
-
-    // QSharedPointer<Core::HeapGroup> heapGroup = this->getHeapGroup();
-
-    // QVariant fileGroupVariant = dm->locateFileGroup(relation->location);
-    // if (!fileGroupVariant.isValid()) {
-    //     qWarning() << "Corrupted File Group!";
-    //     // throw an exception
-    //     throw std::runtime_error("Corrupted File Group!");
+    //
+    // if (!firstInit) {
+    //     QSharedPointer<FreeSpaceMap> freeSpace = this->getFreeSpaceMap();
+    //     freeSpace->printHeap();
     // }
-    // if (!fileGroupVariant.canConvert<HeapGroup>()) {
-    //     qWarning() << "File group is not a HeapGroup!";
-    //     throw std::runtime_error("File group is not a HeapGroup!");
-    // }
-    // HeapGroup heapGroup = fileGroupVariant.value<HeapGroup>();
-
-    // this->freeSpace = &heapGroup.freeSpace; /*QSharedPointer<FreeSpaceMap>(&heapGroup.freeSpace);*/
-
-    // if this heap file is new: TEST
-    if (!firstInit) {
-        QSharedPointer<FreeSpaceMap> freeSpace = this->getFreeSpaceMap();
-        freeSpace->printHeap();
-    }
 }
 
 Types::Return Core::HeapFile::insertRecord()

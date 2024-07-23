@@ -1,5 +1,7 @@
 #include "buffermanager.h"
 #include "lrureplacer.h"
+#include "mrureplacer.h"
+#include "clockreplacer.h"
 #include "diskmanager.h"
 #include "pagefactory.h"
 
@@ -12,25 +14,29 @@ Memory::BufferManager::BufferManager(size_t pool_size, const Types::ReplacementP
         case Types::LRUPolicy:
         {
             replacer = QSharedPointer<LRUReplacer>::create(pool_size);
-            for (size_t i = 0; i < pool_size; ++i) {
-                frames.append(QSharedPointer<Memory::LRUFrame>::create());
-            }
+            // for (size_t i = 0; i < pool_size; ++i) {
+            //     frames.append(QSharedPointer<Memory::LRUFrame>::create());
+            // }
             break;
         }
         case Types::MRUPolicy:
         {
-            // replacer = QSharedPointer<MRUReplacer>::create(pool_size);
+            replacer = QSharedPointer<MRUReplacer>::create(pool_size);
             // for (size_t i = 0; i < pool_size; ++i)
             //     frames.append(QSharedPointer<Memory::MRUFrame>::create());
             break;
         }
         case Types::ClockPolicy:
         {
-            // replacer = QSharedPointer<ClockReplacer>::create(pool_size);
+            replacer = QSharedPointer<ClockReplacer>::create(pool_size);
             // for (size_t i = 0; i < pool_size; ++i)
             //     frames.append(QSharedPointer<Memory::ClockFrame>::create());
             break;
         }
+    }
+
+    for (size_t i = 0; i < pool_size; ++i) {
+        frames.append(QSharedPointer<Memory::Frame>::create());
     }
 
     // initially, every page is in the free list

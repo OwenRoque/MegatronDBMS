@@ -3,6 +3,8 @@ qt_add_library(memory STATIC
     replacer.h
     frame.h frame.cpp
     lrureplacer.h lrureplacer.cpp
+    mrureplacer.h mrureplacer.cpp
+    clockreplacer.h clockreplacer.cpp
 
 )
 

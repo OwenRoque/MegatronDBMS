@@ -6,7 +6,7 @@ qsizetype Core::AutoGrowthFactor = 2;
 Core::DiskManager::DiskManager(QSharedPointer<Storage::DiskController> control, QString storageFile, bool firstInit)
     : controller(control), storageFile(storageFile)
 {
-    // Optional: register metatypes for signal/slot funcionality
+    // Optional: register metatypes for signal/slot functionality
     qRegisterMetaType<HeapGroup>();
     qRegisterMetaType<SequentialGroup>();
     qRegisterMetaType<HashGroup>();

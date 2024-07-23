@@ -1,23 +1,23 @@
-#ifndef LRUREPLACER_H
-#define LRUREPLACER_H
+#ifndef CLOCKREPLACER_H
+#define CLOCKREPLACER_H
 
 #include "replacer.h"
 
 namespace Memory
 {
-    class LRUReplacer : public Replacer
+    class ClockReplacer : public Replacer
     {
     public:
         /**
-         * @brief Create a new LRUReplacer.
-         * @param num_frames the maximum number of frames/pages the LRUReplacer will be required to store
+         * @brief Create a new ClockReplacer.
+         * @param num_frames the maximum number of frames/pages the ClockReplacer will be required to store
          */
-        explicit LRUReplacer(int num_frames);
+        ClockReplacer(int num_frames);
 
         /**
-         * @brief Destroys the LRUReplacer.
+         * @brief Destroys the ClockReplacer.
          */
-        ~LRUReplacer() override;
+        ~ClockReplacer() override;
 
         /**
          * @brief Remove the victim frame as defined by the replacement policy.
@@ -44,13 +44,18 @@ namespace Memory
     private:
         // maximum capacity of frame pool, same as pool size
         size_t numFrames;
-        // implement list as a double ended queue to store 'victimizable' frames, with
-        // the descending time of reference from front to back
+        // list of 'victimizable' frames
         QList<frame_id_t> frames;
+        // reference bits of the frames
+        QList<bool> referenceBits;
         // to fetch the address of a key in the list quickly (find() takes O(N))
-        QHash<frame_id_t, QList<frame_id_t>::iterator> frameMap;
+        QHash<frame_id_t, size_t> frameMap;
+        // clock hand
+        size_t clockHand;
+        // move the hand to the next position
+        void advanceClock();
 
     };
 }
 
-#endif // LRUREPLACER_H
+#endif // CLOCKREPLACER_H

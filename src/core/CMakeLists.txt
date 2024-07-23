@@ -10,6 +10,13 @@ qt_add_library(core STATIC
     record.h record.cpp
     pagefactory.h
     freespacemap.h freespacemap.cpp
+    bplustreefile.h bplustreefile.cpp
+    index.h index.cpp
+    bplustreeindex.h bplustreeindex.cpp
+    bplustree.h bplustree.cpp
+    generic_key.h
+    generic_comparator.h
+
 
 
 )
