@@ -1,4 +1,4 @@
-    #ifndef GENERIC_KEY_H
+#ifndef GENERIC_KEY_H
 #define GENERIC_KEY_H
 
 #include "megatron_types.h"

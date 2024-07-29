@@ -8,6 +8,16 @@ namespace Storage
 {
     using block_id_t = qint32;
 
+    enum class BlockType : quint8
+    {
+        FreePage,
+        InvalidType,
+        UnpackedPage,
+        SlottedPage,
+        BPT_InternalPage,
+        BPT_LeafPage
+    };
+
     class Block : public Utility
     {
     public:
@@ -18,34 +28,22 @@ namespace Storage
         Space getSpace() const override;
         // getters
         block_id_t getId() const;
-        struct Header
-        {
-            // data = d (fixed/variable),
-            // index = i (leaf/internal/root included)
-            // free = f
-            enum BlockType : quint8
-            {
-                Free,
-                DataFixed,
-                DataVariable,
-                IndexInternal,
-                IndexLeaf
-            };
-            BlockType type;
-        };
-        Header getHeader() const;
+        BlockType getHeader() const;
         QByteArray getData() const;
         QSharedPointer<Sector> getSector(int);
         void setId(block_id_t);
-        void setHeader(const Header::BlockType&);
+        void setHeader(const BlockType&);
         void setData(const QByteArray&);
         void setSectors(QList<QSharedPointer<Sector>> sec);
 
     private:
-        block_id_t id;
-        qint64 address;
-        Header header;
+        // header data
+        BlockType blockType;
+        // payload
         QByteArray data;
+        // metadata
+        qint64 address;
+        block_id_t id;
         QList<QSharedPointer<Sector>> sectors;
 
     };

@@ -74,8 +74,8 @@ QSharedPointer<Storage::Block> Core::DiskManager::readBlock(int pageId)
 void Core::DiskManager::writeBlock(int pageId, QSharedPointer<Storage::Block> block)
 {
     QByteArray data;
-    Storage::Block::Header h = block->getHeader();
-    data.append(h.type);
+    Storage::BlockType header = block->getHeader();
+    data.append(static_cast<quint8>(header));
     data.append(block->getData());
     controller->writeBlock(toPhysicalAddress(pageId), data);
 }
@@ -121,7 +121,7 @@ void Core::DiskManager::deallocateBlock(int blockId)
 {
     // Clear block's data, set it as free
     QSharedPointer<Storage::Block> target(new Storage::Block(blockId, QByteArray()));
-    target->setHeader(Storage::Block::Header::BlockType::Free);
+    target->setHeader(Storage::BlockType::FreePage);
     this->writeBlock(toPhysicalAddress(blockId), target);
 }
 

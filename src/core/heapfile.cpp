@@ -170,6 +170,7 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
             else {
                 // cast the page to a DataPage, this is the one we need to store data
                 targetPage = page.staticCast<Core::DataPage>();
+                frame->setPage(targetPage);
             }
         }
         else if (relation->recordFormat == Types::RecordFormat::Variable)
@@ -182,6 +183,7 @@ Types::Return Core::HeapFile::bulkInsertRecords(const QString &dataPath)
             else {
                 // cast the page to a DataPage, this is the one we need to store data
                 targetPage = page.staticCast<Core::DataPage>();
+                frame->setPage(targetPage);
             }
         }
 

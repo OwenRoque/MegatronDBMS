@@ -7,7 +7,7 @@ Storage::Block::Block(Storage::block_id_t blockId, const QByteArray &data)
     // block address (LBA value will change in intervals, depending on blockFactor)
     this->address = blockId * Storage::blockFactor;
     QDataStream in(data);
-    in >> header.type;
+    in >> blockType;
     in >> this->data;
 }
 
@@ -30,9 +30,9 @@ Storage::block_id_t Storage::Block::getId() const
     return id;
 }
 
-Storage::Block::Header Storage::Block::getHeader() const
+Storage::BlockType Storage::Block::getHeader() const
 {
-    return header;
+    return blockType;
 }
 
 QByteArray Storage::Block::getData() const
@@ -51,9 +51,9 @@ void Storage::Block::setId(Storage::block_id_t id)
     this->address = id * Storage::blockFactor;
 }
 
-void Storage::Block::setHeader(const Header::BlockType& type)
+void Storage::Block::setHeader(const Storage::BlockType& type)
 {
-    this->header.type = type;
+    this->blockType = type;
 }
 
 void Storage::Block::setData(const QByteArray &data)

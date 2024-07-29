@@ -13,12 +13,12 @@ namespace Core
         // TODO: add index pages standart constructors here
         static QSharedPointer<Page> createPage(QSharedPointer<Storage::Block> block) {
             auto header = block->getHeader();
-            switch (header.type) {
-            case Storage::Block::Header::DataFixed:
+            switch (header) {
+            case Storage::BlockType::UnpackedPage:
                 return QSharedPointer<Page>(new UnpackedDataPage(block));
-            case Storage::Block::Header::DataVariable:
+            case Storage::BlockType::SlottedPage:
                 return QSharedPointer<Page>(new SlottedPage(block));
-            case Storage::Block::Header::Free:
+            case Storage::BlockType::FreePage:
                 return QSharedPointer<Page>(new FreePage(block->getId()));
             default:
                 throw std::invalid_argument("Tipo de bloque no soportado");

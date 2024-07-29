@@ -27,6 +27,17 @@ namespace Types
     };
     Q_ENUM_NS(DataType)
 
+    enum PageType : quint8
+    {
+        FreePage,
+        InvalidType,
+        UnpackedPage,
+        SlottedPage,
+        BPT_InternalPage,
+        BPT_LeafPage
+    };
+    Q_ENUM_NS(PageType)
+
     enum FileOrganization : quint8
     {
         Heap,
