@@ -122,7 +122,7 @@ private:
     int pageHitCounter;
 
     // helper function to convert block to derived page (data/index)
-    QSharedPointer<Core::Page> pageConverter(QSharedPointer<Storage::Block> block);
+    // QSharedPointer<Core::Page> pageConverter(QSharedPointer<Storage::Block> block);
 
     Q_DISABLE_COPY(BufferManager);
 };

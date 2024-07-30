@@ -760,11 +760,12 @@ void Core::BPTLeafIndexPage<KeyType, ValueType, KeyComparator>::moveHalfTo(QShar
     // After the root node splits it becomes a leaf node
     int start = !isRootPage() ? getMinSize() : getMaxSize() / 2;
     int N = getSize() - start;
-    recipient->copyNFrom(array + start, N);
+    QList<MappingType> itemsToMove = array.mid(start, N);
+    recipient->copyNFrom(itemsToMove, N);
 
     // update next page id
     recipient->setNextPageId(getNextPageId());
-    setNextPageId(recipient->getPageId());
+    setNextPageId(recipient->getId());
 
     increaseSize(-N);
 }
@@ -815,7 +816,10 @@ void Core::BPTLeafIndexPage<KeyType, ValueType, KeyComparator>::copyFirstFrom(co
     increaseSize(1);
 }
 
-
+template class Core::BPTLeafIndexPage<Core::GenericKey<Types::DataType::TinyInt>, Core::rowId, Core::GenericComparator<Types::DataType::TinyInt>>;
+template class Core::BPTLeafIndexPage<Core::GenericKey<Types::DataType::SmallInt>, Core::rowId, Core::GenericComparator<Types::DataType::SmallInt>>;
+template class Core::BPTLeafIndexPage<Core::GenericKey<Types::DataType::Int>, Core::rowId, Core::GenericComparator<Types::DataType::Int>>;
+template class Core::BPTLeafIndexPage<Core::GenericKey<Types::DataType::BigInt>, Core::rowId, Core::GenericComparator<Types::DataType::BigInt>>;
 
 
 

@@ -16,6 +16,7 @@ qt_add_library(core STATIC
     bplustree.h bplustree.cpp
     generic_key.h
     generic_comparator.h
+    indexiterator.h indexiterator.cpp
 
 
 
